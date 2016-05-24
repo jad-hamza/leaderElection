@@ -6,6 +6,7 @@ import FifoNetwork._
 
 import leon.collection._
 import leon.proof.check
+import leon.lang._
 
 object Networking {
   
@@ -53,6 +54,8 @@ object Networking {
           
           if (validId(net, sender) && validId(net, receiver) && net.applyMessage(sender, receiver, m))
             loop(schedule2)
+          else
+            error[Unit]("schedule not valid")
             
       }
     } ensuring(_ => networkInvariant(net.param, net.states, net.messages, net.getActor))
