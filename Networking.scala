@@ -54,8 +54,8 @@ object Networking {
           
           if (validId(net, sender) && validId(net, receiver) && net.applyMessage(sender, receiver, m))
             loop(schedule2)
-          else
-            error[Unit]("schedule not valid")
+//           else
+//             error[Unit]("schedule not valid")
             
       }
     } ensuring(_ => networkInvariant(net.param, net.states, net.messages, net.getActor))
