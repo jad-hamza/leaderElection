@@ -30,28 +30,26 @@ object ProtocolProof {
   def makeNetwork(p: Parameter) = {
     
     def states(id: ActorId): Option[State] = {
-      Some(CommonState(MMap((x: String) => (None[BigInt]))))
+      id match {
+        case ActorIdSys(x) => Some(CommonState(MMap( (x: String) => (None[BigInt]) ), Nil() ) )
+        case ActorIdUser(x) => Some(UserState())
+      }
     }
     
     def getActor(id: ActorId): Option[Actor] = id match {
-      case ActorIdSys(x) => if (x == 1) {Some(SystemActor(actor1))}
+      case ActorIdSys(x) => if (x == 1) {Some(SystemActor(a1))}
 			else {
-			  if (x == 2) {Some(SystemActor(actor2))}
+			  if (x == 2) {Some(SystemActor(a2))}
 			  else {
-			    Some(SystemActor(actor3))
+			    Some(SystemActor(a3))
 			  }
 			}
-      case ActorIdUser(x) => Some(UserActor(actor4))
+      case ActorIdUser(x) => Some(UserActor(a4))
     }
 
-    var messages: MMap[(ActorId,ActorId),List[Message]] = MMap()
-    messages = messages.updated((actor4,actor1), List(WriteUser("1", 1)))
-    messages = messages.updated((actor4,actor2), List(Read("1"), WriteUser("1", 2), Read("1")))
-    messages = messages.updated((actor4,actor3), List(Read("1"), Read("1")))
-     
     VerifiedNetwork(NoParam(), 
 		MMap(states), 
-		messages,
+		MMap(),
 		MMap(getActor))
   }
 

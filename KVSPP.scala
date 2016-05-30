@@ -11,8 +11,9 @@ object PrettyPrinting {
   
   def stateToString(s: State) = {
     s match {
-      case CommonState(x) => "CommonState"
+      case CommonState(x,h) => "CommonState"
       case BadState() => "BadState"
+      case UserState() => "UserState"
     }
   }
   
@@ -55,12 +56,20 @@ object PrettyPrinting {
     loop(List(a1,a2,a3,a4))
   }
   
+  def historyToString(h: List[(String,BigInt)]): String = {
+    h match {
+      case Nil() => ""
+      case (s,i)::q => "(" + s + ", " + i + "), " + historyToString(q)
+    }
+  }
+  
   def messageToString(m: Message) = {
     m match  {
       case Value(x) => "Value(" + x + ")"
       case Read(s) => "Read(" + s + ")"
       case WriteUser(s, i) => "WriteUser(" + s + ", " + i + ")"
-      case WriteSystem(s, i) => "WriteUser(" + s + ", " + i + ")"
+      case WriteSystem(s, i, h) => "WriteSystem(" + s + ", " + i + ", " + historyToString(h) + ")"
+      case WriteWaiting(s,i,h) => "WriteWaiting(" + s + ", " + i + ", " + historyToString(h) + ")"
     }
   }
   

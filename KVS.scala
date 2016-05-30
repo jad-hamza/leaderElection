@@ -15,11 +15,13 @@ object Protocol {
   
 
   case class WriteUser(s: String, i: BigInt) extends Message
-  case class WriteSystem(s: String, i: BigInt) extends Message
+  case class WriteSystem(s: String, i: BigInt, history: List[(String,BigInt)]) extends Message
+  case class WriteWaiting(s: String, i: BigInt, history: List[(String,BigInt)]) extends Message
   case class Read(s: String) extends Message
   case class Value(v: BigInt) extends Message
 
-  case class CommonState(mem: MMap[String,BigInt]) extends State
+  case class CommonState(mem: MMap[String,BigInt], history: List[(String,BigInt)]) extends State
+  case class UserState() extends State
   case class BadState() extends State
 
   case class ActorIdSys(i: BigInt) extends ActorId
@@ -28,15 +30,15 @@ object Protocol {
   // this protocol does not need a parameter
   case class NoParam() extends Parameter
 
-  val actor1: ActorIdSys = ActorIdSys(1)
-  val actor2: ActorIdSys = ActorIdSys(2)
-  val actor3: ActorIdSys = ActorIdSys(3)
-  val actor4: ActorIdUser = ActorIdUser(1)
+  val a1: ActorIdSys = ActorIdSys(1)
+  val a2: ActorIdSys = ActorIdSys(2)
+  val a3: ActorIdSys = ActorIdSys(3)
+  val a4: ActorIdUser = ActorIdUser(1)
   
-  val a1 = ActorIdSys(1)
-  val a2 = ActorIdSys(2)
-  val a3 = ActorIdSys(3)
-  val a4 = ActorIdUser(1)
+ // val a1 = ActorIdSys(1)
+ // val a2 = ActorIdSys(2)
+ // val a3 = ActorIdSys(3)
+ // val a4 = ActorIdUser(1)
 
   case class SystemActor(myId: ActorId) extends Actor {
     require(myId == ActorIdSys(1) || myId == ActorIdSys(2) || myId == ActorIdSys(3))
@@ -47,44 +49,61 @@ object Protocol {
       require(true)
     } ensuring(true)
 
+    def checkHistory(receiverHistory: List[(String,BigInt)], messageHistory: List[(String,BigInt)]):Boolean = {
+      (receiverHistory, messageHistory) match {
+        case (l, Nil()) => true
+        case (Nil(), l) => false
+        case (x::q, y::s) => 
+          if (x==y) {
+            checkHistory(q,s)
+          }
+          else {
+            checkHistory(q,y::s)
+          }
+      }
+    }
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
       printing("recevie System")
       (sender, m, state) match {
-        case (id, WriteUser(s,i), CommonState(x)) =>
-          val memory = this.state(net);
-	  memory match {
-	    case CommonState(mem) => 
-	      update(CommonState(mem.updated(s,i)))
-	    case BadState() => update(BadState())
-	  }
-          if(myId != actor1){
-            !! (actor1, WriteSystem(s,i))
+        case (id, WriteUser(s,i), CommonState(mem,h)) =>
+	        update(CommonState(mem.updated(s,i),(s,i)::h))
+	        if(myId != a1){
+            !! (a1, WriteSystem(s,i,h))
           };
-          if(myId != actor2){
-            !! (actor2, WriteSystem(s,i))
+          if(myId != a2){
+            !! (a2, WriteSystem(s,i,h))
           };
-          if(myId != actor3){
-            !! (actor3, WriteSystem(s,i))
+          if(myId != a3){
+            !! (a3, WriteSystem(s,i,h))
           }
 
-        case (id, WriteSystem(s,i), CommonState(x)) =>
-          val memory = this.state(net);
-	  memory match {
-	    case CommonState(mem) => 
-	      update(CommonState(mem.updated(s,i)));
-	    case BadState() => update(BadState())
-	  }
+        case (id, WriteSystem(s,i,hs), CommonState(mem,h)) =>
+	        if (checkHistory(h,hs)) {
+	          update(CommonState(mem.updated(s,i),(s,i)::h));
+	        }
+	        else {
+	          !! (myId, WriteWaiting(s,i,hs))
+	        }
+	      
+	      case (id, WriteWaiting(s,i,hs), CommonState(mem,h)) =>
+	        if (id != myId) {
+	          update(BadState())
+	        }
+	        else { // I try to use the message as if it came from an other SystemUser
+	          if (checkHistory(h,hs)) {
+	            update(CommonState(mem.updated(s,i),(s,i)::h));
+	          }
+	          else { // I have not received enough messages, I send the message back to the Waiting List
+	            !! (myId, WriteWaiting(s,i,hs))
+	          }
+	        }
 
-        case (id,Read(s), CommonState(x)) =>
-           val memory = this.state(net);
-	   memory match {
-	     case CommonState(mem) => 
-	   	!! (id, Value(mem.getOrElse(s,0))) //cannot return None in default case
-	     case BadState() => update(BadState())
-	   }
+        case (id,Read(s), CommonState(mem,h)) =>
+	   	    !! (id, Value(mem.getOrElse(s,0))) //cannot return None in default case
+	   	    
         case _ => update(BadState())
       }
     } ensuring(true)
@@ -98,13 +117,17 @@ object Protocol {
 
     var x: Option[BigInt] = None[BigInt]
 
-    def init()(implicit net: VerifiedNetwork) = ()
+    def init()(implicit net: VerifiedNetwork) = {
+      net.messages = net.messages.updated((a4,a1), List(WriteUser("1", 1)))
+      net.messages = net.messages.updated((a4,a2), List(Read("1"), WriteUser("1", 2), Read("1")))
+      net.messages = net.messages.updated((a4,a3), List(Read("1"), Read("1")))
+    }
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == actor1 || sender == actor2 || sender == actor3))
+      require(networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == a1 || sender == a2 || sender == a3))
       printing("receive User")
       (sender, m, state) match {
-        case (sender, Value(v), CommonState(x)) =>
+        case (sender, Value(v), UserState()) =>
           printing(PrettyPrinting.messageToString(Value(v)))
         case _ => update(BadState())
       }
@@ -121,27 +144,27 @@ object Protocol {
   @ignore
   def main(args: Array[String]) = {
     println("ok")
-    val a1 = SystemActor(actor1)
-    val a2 = SystemActor(actor2)
-    val a3 = SystemActor(actor3)
-    val a4 = UserActor(actor4)
+    val actor1 = SystemActor(a1)
+    val actor2 = SystemActor(a2)
+    val actor3 = SystemActor(a3)
+    val actor4 = UserActor(a4)
 
-    runActors(NoParam(), a1, List(
-      (actor4, actor1, WriteUser("1", 1)),
-      (actor1, actor2, WriteSystem("1", 1)),
-      (actor4, actor2, Read("1")),
-      (actor2,actor4,Value(1)),
+    runActors(NoParam(), actor4, List(
+      (a4, a1, WriteUser("1", 1)),
+      (a1, a2, WriteSystem("1", 1,Nil())),
+      (a4, a2, Read("1")),
+      (a2, a4,Value(1)),
 
-      (actor4, actor2, WriteUser("1", 2)),
-      (actor4,actor2, Read("1")),
-      (actor2, actor4, Value(2)),
-      (actor2, actor3, WriteSystem("1", 2)),
-      (actor4, actor3, Read("1")),
-      (actor3,actor4,Value(2)),
+      (a4, a2, WriteUser("1", 2)),
+      (a4, a2, Read("1")),
+      (a2, a4, Value(2)),
+      (a2, a3, WriteSystem("1", 2,Nil())),
+      (a4, a3, Read("1")),
+      (a3, a4,Value(2)),
 
-      (actor1, actor3, WriteSystem("1", 1)),
-      (actor4, actor3, Read("1")),
-      (actor3,actor4,Value(1))
+      (a1, a3, WriteSystem("1", 1,Nil())),
+      (a4, a3, Read("1")),
+      (a3, a4,Value(1))
     ))
   }
 
