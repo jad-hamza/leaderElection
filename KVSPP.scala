@@ -56,10 +56,10 @@ object PrettyPrinting {
     loop(List(a1,a2,a3,a4))
   }
   
-  def historyToString(h: List[(String,BigInt)]): String = {
+  def historyToString(h: List[(String,String,BigInt)]): String = {
     h match {
       case Nil() => ""
-      case (s,i)::q => "(" + s + ", " + i + "), " + historyToString(q)
+      case (action, x, v)::q => "(" + action + ", " + x + ", " + v + "), " + historyToString(q)
     }
   }
   

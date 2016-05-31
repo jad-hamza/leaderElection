@@ -15,12 +15,12 @@ object Protocol {
   
 
   case class WriteUser(s: String, i: BigInt) extends Message
-  case class WriteSystem(s: String, i: BigInt, history: List[(String,BigInt)]) extends Message
-  case class WriteWaiting(s: String, i: BigInt, history: List[(String,BigInt)]) extends Message
+  case class WriteSystem(s: String, i: BigInt, history: List[(String,String,BigInt)]) extends Message
+  case class WriteWaiting(s: String, i: BigInt, history: List[(String,String,BigInt)]) extends Message
   case class Read(s: String) extends Message
   case class Value(v: BigInt) extends Message
 
-  case class CommonState(mem: MMap[String,BigInt], history: List[(String,BigInt)]) extends State
+  case class CommonState(mem: MMap[String,BigInt], history: List[(String,String,BigInt)]) extends State
   case class UserState() extends State
   case class BadState() extends State
 
@@ -35,11 +35,12 @@ object Protocol {
   val a3: ActorIdSys = ActorIdSys(3)
   val a4: ActorIdUser = ActorIdUser(1)
   
- // val a1 = ActorIdSys(1)
- // val a2 = ActorIdSys(2)
- // val a3 = ActorIdSys(3)
- // val a4 = ActorIdUser(1)
-
+  val actor1 = SystemActor(a1)
+  val actor2 = SystemActor(a2)
+  val actor3 = SystemActor(a3)
+  val actor4 = UserActor(a4)
+    
+    
   case class SystemActor(myId: ActorId) extends Actor {
     require(myId == ActorIdSys(1) || myId == ActorIdSys(2) || myId == ActorIdSys(3))
 
@@ -49,7 +50,7 @@ object Protocol {
       require(true)
     } ensuring(true)
 
-    def checkHistory(receiverHistory: List[(String,BigInt)], messageHistory: List[(String,BigInt)]):Boolean = {
+    def checkHistory(receiverHistory: List[(String,String,BigInt)], messageHistory: List[(String,String,BigInt)]):Boolean = {
       (receiverHistory, messageHistory) match {
         case (l, Nil()) => true
         case (Nil(), l) => false
@@ -69,7 +70,7 @@ object Protocol {
       printing("recevie System")
       (sender, m, state) match {
         case (id, WriteUser(s,i), CommonState(mem,h)) =>
-	        update(CommonState(mem.updated(s,i),(s,i)::h))
+	        update(CommonState(mem.updated(s,i),("write",s,i)::h))
 	        if(myId != a1){
             !! (a1, WriteSystem(s,i,h))
           };
@@ -82,7 +83,7 @@ object Protocol {
 
         case (id, WriteSystem(s,i,hs), CommonState(mem,h)) =>
 	        if (checkHistory(h,hs)) {
-	          update(CommonState(mem.updated(s,i),(s,i)::h));
+	          update(CommonState(mem.updated(s,i),("write",s,i)::h));
 	        }
 	        else {
 	          !! (myId, WriteWaiting(s,i,hs))
@@ -94,7 +95,7 @@ object Protocol {
 	        }
 	        else { // I try to use the message as if it came from an other SystemUser
 	          if (checkHistory(h,hs)) {
-	            update(CommonState(mem.updated(s,i),(s,i)::h));
+	            update(CommonState(mem.updated(s,i),("write",s,i)::h));
 	          }
 	          else { // I have not received enough messages, I send the message back to the Waiting List
 	            !! (myId, WriteWaiting(s,i,hs))
@@ -102,7 +103,11 @@ object Protocol {
 	        }
 
         case (id,Read(s), CommonState(mem,h)) =>
-	   	    !! (id, Value(mem.getOrElse(s,0))) //cannot return None in default case
+          if (mem.contains(s)) {
+            update(CommonState(mem,("read",s,mem.apply(s))::h));
+            !! (id, Value(mem.apply(s))) //cannot return None in default case
+          }
+	   	    
 	   	    
         case _ => update(BadState())
       }
