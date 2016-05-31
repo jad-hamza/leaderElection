@@ -59,7 +59,7 @@ object Protocol {
       printing("recevie System")
       (sender, m, state) match {
         case (id, WriteUser(s,i), CommonState(mem,h)) =>
-	        update(CommonState(mem.updated(s,i),h+(s,i)));
+	        update(CommonState(mem.updated(s,i),h++Set((s,i))));
 	        if(myId != a1){
             !! (a1, WriteSystem(s,i,h))
           };
@@ -73,7 +73,7 @@ object Protocol {
 
         case (id, WriteSystem(s,i,hs), CommonState(mem,h)) =>
 	        if (checkHistory(h,hs)) {
-	          update(CommonState(mem.updated(s,i),h+(s,i)));
+	          update(CommonState(mem.updated(s,i),h++Set((s,i))));
 	        }
 	        else {
 	          !! (myId, WriteWaiting(s,i,hs))
@@ -85,7 +85,7 @@ object Protocol {
 	        }
 	        else { // I try to use the message as if it came from an other SystemUser
 	          if (checkHistory(h,hs)) {
-	            update(CommonState(mem.updated(s,i),h+(s,i)));
+	            update(CommonState(mem.updated(s,i),h++Set((s,i))));
 	          }
 	          else { // I have not received enough messages, I send the message back to the Waiting List
 	            !! (myId, WriteWaiting(s,i,hs))

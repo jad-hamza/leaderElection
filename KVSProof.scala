@@ -70,10 +70,47 @@ object ProtocolProof {
     getActor(a1) == SystemActor(a1) &&
     getActor(a2) == SystemActor(a2) &&
     getActor(a3) == SystemActor(a3) &&
-    getActor(a4) == UserActor(a4) 
+    getActor(a4) == UserActor(a4) && 
+    WriteHistory(messages, states)
   }
   
-  
+  def WriteHistory(messages: MMap[(ActorId,ActorId),List[Message]], states:MMap[ActorId, State]): Boolean = {
+    def loop(list: List[(ActorId,ActorId)], userHistory: List[(String,BigInt,Set[(String,BigInt)])]): Boolean = {
+      list match {
+        case Nil() => true
+        case (actor1,actor2)::q =>
+          checkWrite(messages(actor1,actor2), userHistory) && loop(q, userHistory)
+      }
+    }
+    
+    val userState = states(a4);
+    userState match {
+      case UserState(userHistory) =>
+        loop(
+          List(
+            (a1,a1),(a1,a2),(a1,a3),(a1,a4),
+            (a2,a1),(a2,a2),(a2,a3),(a2,a4),
+            (a3,a1),(a3,a2),(a3,a3),(a3,a4),
+            (a4,a1),(a4,a2),(a4,a3),(a4,a4)
+          ),
+          userHistory
+        )
+      case _ => false
+    }
+  }
+
+  def checkWrite(l: List[Message], userHistory: List[(String,BigInt,Set[(String,BigInt)])]):Boolean = {
+    l match {
+      case Nil() => true
+      case x::q => 
+        x match {
+          case WriteUser(x,v) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
+          case WriteSystem(x,v,h) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
+          case WriteWaiting(x,v,h) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
+          case _ => checkWrite(q, userHistory)
+        }
+    }
+  }
   
   
   
