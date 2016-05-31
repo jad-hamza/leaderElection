@@ -93,10 +93,10 @@ object Protocol {
 	        }
 
         case (id,Read(s), CommonState(mem,h)) =>
-          if (mem.contains(s)) {
-            !! (id, Value(mem(s))) //cannot return None in default case
+          if (id == a4 && mem.contains(s)) {
+              !! (id, Value(mem(s))) //cannot return None in default case
           }
-	   	    	   	    
+  	    
         case _ => update(BadState())
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
@@ -110,14 +110,18 @@ object Protocol {
 
     var x: Option[BigInt] = None[BigInt]
 
+
     def init()(implicit net: VerifiedNetwork) = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor))
       net.messages = net.messages.updated((a4,a1), List(WriteUser("1", 1)))
       net.messages = net.messages.updated((a4,a2), List(Read("1"), WriteUser("1", 2), Read("1")))
       net.messages = net.messages.updated((a4,a3), List(Read("1"), Read("1")))
-      update(UserState(List( ("1",1,Set()), ("1",2,Set())  )))
-      
+      state match {
+        case UserState(l) => update(UserState(Cons(("1",1,Set()), Cons( ("1",2,Set()),l))))
+        case BadState() => update(BadState())
+      }
     }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
+    
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == a1 || sender == a2 || sender == a3))

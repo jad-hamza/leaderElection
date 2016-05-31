@@ -71,47 +71,90 @@ object ProtocolProof {
     getActor(a2) == SystemActor(a2) &&
     getActor(a3) == SystemActor(a3) &&
     getActor(a4) == UserActor(a4) && 
+    //checkMyChannel(a4,messages) 
+    //checkMyChannel(a1,messages)
+    //checkMyChannel(a2,messages)
+    //checkMyChannel(a3,messages)
     WriteHistory(messages, states)
   }
   
+  // if there is a Write in a channel then there is the correspondant operation in the history of the User
   def WriteHistory(messages: MMap[(ActorId,ActorId),List[Message]], states:MMap[ActorId, State]): Boolean = {
+    require(states.contains(a1) && states.contains(a2) && states.contains(a3) && states.contains(a4))
+    
+    def checkWrite(l: List[Message], userHistory: List[(String,BigInt,Set[(String,BigInt)])]):Boolean = {
+      l match {
+        case Nil() => true
+        case x::q => 
+          x match {
+            case WriteUser(x,v) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
+            //case WriteSystem(x,v,h) =>  checkWrite(q, userHistory)
+            //case WriteWaiting(x,v,h) =>  checkWrite(q, userHistory)
+            case _ => checkWrite(q, userHistory)
+          }
+      }
+    }
+    
     def loop(list: List[(ActorId,ActorId)], userHistory: List[(String,BigInt,Set[(String,BigInt)])]): Boolean = {
       list match {
         case Nil() => true
         case (actor1,actor2)::q =>
-          checkWrite(messages(actor1,actor2), userHistory) && loop(q, userHistory)
+          checkWrite(messages.getOrElse((actor1,actor2),Nil()), userHistory) && loop(q, userHistory)
       }
     }
     
-    val userState = states(a4);
-    userState match {
+    states(a4) match {
       case UserState(userHistory) =>
         loop(
           List(
-            (a1,a1),(a1,a2),(a1,a3),(a1,a4),
-            (a2,a1),(a2,a2),(a2,a3),(a2,a4),
-            (a3,a1),(a3,a2),(a3,a3),(a3,a4),
-            (a4,a1),(a4,a2),(a4,a3),(a4,a4)
+            (a1,a1)//,(a1,a2),(a1,a3),(a1,a4),
+            //(a2,a1),(a2,a2),(a2,a3),(a2,a4),
+            //(a3,a1),(a3,a2),(a3,a3),(a3,a4),
+            //(a4,a1),(a4,a2),(a4,a3),(a4,a4)
           ),
           userHistory
         )
       case _ => false
     }
   }
-
-  def checkWrite(l: List[Message], userHistory: List[(String,BigInt,Set[(String,BigInt)])]):Boolean = {
-    l match {
-      case Nil() => true
-      case x::q => 
-        x match {
-          case WriteUser(x,v) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
-          case WriteSystem(x,v,h) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
-          case WriteWaiting(x,v,h) => userHistory.contains((x,v,Set())) && checkWrite(q, userHistory)
-          case _ => checkWrite(q, userHistory)
-        }
-    }
-  }
   
+  // nothing in the channel (a,a) except WriteWaiting messgaes
+  //def checkMyChannel(a: ActorId, messages:MMap[(ActorId,ActorId),List[Message]]) = {
+  //  val myChannel = messages.getOrElse((a,a), Nil());
+    
+  //  def checkMyChannelAux(l: List[Message]): Boolean = {
+  //    l match {
+  //      case Nil() => true
+  //      case x::q => 
+  //        x match {
+  //          case WriteWaiting(x,v,h) => checkMyChannelAux(q)
+  //          case _ => false
+  //        } 
+  //    }
+  //  }
+    
+  //  checkMyChannelAux(myChannel)
+//  }
+  
+  // there are no Read(s) messages in all channels leaving a
+//  def noRead(a:ActorId, messages:MMap[(ActorId,ActorId),List[Message]]) = {
+//    def noReadChannelAux(l:List[Message]):Boolean = {
+//      l match {
+//        case Nil() => true
+//        case x::q => 
+//          x match {
+//            case Read(s) => false
+//            case _ => noReadChannelAux(q)
+//          }
+//      }
+//    }
+    
+//    def noReadChannel(act1:ActorId,act2:ActorId, messages:MMap[(ActorId,ActorId),List[Message]]) = {
+//      noReadChannelAux(messages.getOrElse((act1,act2), Nil()))
+//    }
+//    
+//    noReadChannel(a,a1,messages) && noReadChannel(a,a2,messages) && noReadChannel(a,a3,messages) && noReadChannel(a,a4,messages)
+//  }
   
   
   def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]) = true
@@ -131,16 +174,14 @@ object ProtocolProof {
   def peekMessageEnsuresReceivePre(n: VerifiedNetwork, sender: ActorId, receiver: ActorId, m: Message) = {
     require(networkInvariant(n.param, n.states, n.messages, n.getActor) && validId(n,sender) && validId(n,receiver))
     val sms = n.messages.getOrElse((sender,receiver), Nil())
-      
-    
-      sms match {
-        case Cons(x, xs) if (x == m) => 
-          val messages2 = n.messages.updated((sender,receiver), xs)
-          ((receiver == a4) ==> (sender == a1 || sender == a2 || sender == a3))
-
-        case _ => 
-          true
-      }
+    sms match {
+      case Cons(x, xs) if (x == m) => 
+        val messages2 = n.messages.updated((sender,receiver), xs);
+        ((receiver == a4) ==> (sender == a1 || sender == a2 || sender == a3))
+ 
+      case _ => 
+        true
+    }
   } holds
   
   
