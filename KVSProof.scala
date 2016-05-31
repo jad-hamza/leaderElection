@@ -31,8 +31,8 @@ object ProtocolProof {
     
     def states(id: ActorId): Option[State] = {
       id match {
-        case ActorIdSys(x) => Some(CommonState(MMap( (x: String) => (None[BigInt]) ), Nil() ) )
-        case ActorIdUser(x) => Some(UserState())
+        case ActorIdSys(x) => Some(CommonState(MMap( (x: String) => (None[BigInt]) ), Set() ) )
+        case ActorIdUser(x) => Some(UserState(Nil()))
       }
     }
     
@@ -70,75 +70,29 @@ object ProtocolProof {
     getActor(a1) == SystemActor(a1) &&
     getActor(a2) == SystemActor(a2) &&
     getActor(a3) == SystemActor(a3) &&
-    getActor(a4) == UserActor(a4) &&
-    consistency(states.apply(a1)) &&
-    consistency(states.apply(a2)) &&
-    consistency(states.apply(a3))
+    getActor(a4) == UserActor(a4) 
   }
   
-  def consistency(state:State):Boolean = {
-    state match {
-      case BadState() => false
-      case CommonState(mem,h) => (consistency1(h) && consistency2(h))
+  
+  def WriteUserHistory(messages: MMap[(ActorId,ActorId),List[Message]]) = {
+    val actors = List((a1,a1),(a1,a2),(a1,a3),(a1,a4),
+    (a2,a1),(a2,a2),(a2,a3),(a2,a4),
+    (a3,a1),(a3,a2),(a3,a3),(a3,a4),
+    (a4,a1),(a4,a2),(a4,a3),(a4,a4));
+    def loop(list: List[(ActorId,ActorId)]): Boolean = {
+      schedule match {
+        case Nil() => true
+        case (actor1,actor2)::q =>
+          checkWriteUser(messages(actor1,actor2)) && loop(q)
+      }
     }
+    loop(actors)
+  }
+
+  def checkWriteUser(l: List[Messages]):Boolean = {
+    true
   }
   
-  def consistency1(history:List[(String,String,BigInt)]):Boolean = {
-    history match {
-      case Nil() => true
-      case (action,variable,value)::q => 
-        if (action == "read") {
-          searchWrite(variable,value,q)
-        }
-        else {
-          consistency1(q)
-        }
-     }
-  }
-  
-  def searchWrite(variable:String, value:BigInt, history:List[(String,String,BigInt)]): Boolean = {
-    history match {
-      case Nil() => false
-      case (action,x,v)::q => 
-        if (action == "write" && x == variable && v == value) {
-          true
-        }
-        else {
-          searchWrite(variable, value, q)
-        }
-    }
-  }
-  
-  def consistency2(history:List[(String,String,BigInt)]):Boolean = {
-    history match {
-      case Nil() => true
-      case (action,variable,value)::q => 
-        if (action == "read") {
-          searchBadWrite(variable,value,q)
-        }
-        else {
-          consistency2(q)
-        }
-    }
-  }
-  
-  def searchBadWrite(variable:String, value:BigInt, history:List[(String,String,BigInt)]): Boolean = {
-    history match {
-      case Nil() => true
-      case (action,x,v)::q => 
-        if (action == "write" && x == variable && v != value) {
-          false
-        }
-        else {
-          if (action == "write" && x == variable && v == value) {
-            true
-          }
-          else {
-            searchBadWrite(variable,value,q)
-          }
-        }
-    }
-  }
   
   def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]) = true
     

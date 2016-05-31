@@ -7,13 +7,19 @@ import ProtocolProof._
 import Networking._
 import FifoNetwork._
 
+import scala.language.postfixOps
+import leon.lang._
+import leon.proof.check
+import leon.collection._
+import leon.annotation._
+
 object PrettyPrinting {
   
   def stateToString(s: State) = {
     s match {
       case CommonState(x,h) => "CommonState"
       case BadState() => "BadState"
-      case UserState() => "UserState"
+      case UserState(l) => "UserState"
     }
   }
   
@@ -56,11 +62,8 @@ object PrettyPrinting {
     loop(List(a1,a2,a3,a4))
   }
   
-  def historyToString(h: List[(String,String,BigInt)]): String = {
-    h match {
-      case Nil() => ""
-      case (action, x, v)::q => "(" + action + ", " + x + ", " + v + "), " + historyToString(q)
-    }
+  def historyToString(h: Set[(String,BigInt)]): String = {
+    Set.mkString(h, ",", (x:(String,BigInt)) => x._1 + ", " + x._2)
   }
   
   def messageToString(m: Message) = {
@@ -70,6 +73,7 @@ object PrettyPrinting {
       case WriteUser(s, i) => "WriteUser(" + s + ", " + i + ")"
       case WriteSystem(s, i, h) => "WriteSystem(" + s + ", " + i + ", " + historyToString(h) + ")"
       case WriteWaiting(s,i,h) => "WriteWaiting(" + s + ", " + i + ", " + historyToString(h) + ")"
+      case AckUser(x,v,h) => "AckUser(" + x + ", " + v + ", "+ historyToString(h) + ")"
     }
   }
   
