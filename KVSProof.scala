@@ -74,24 +74,7 @@ object ProtocolProof {
   }
   
   
-  def WriteUserHistory(messages: MMap[(ActorId,ActorId),List[Message]]) = {
-    val actors = List((a1,a1),(a1,a2),(a1,a3),(a1,a4),
-    (a2,a1),(a2,a2),(a2,a3),(a2,a4),
-    (a3,a1),(a3,a2),(a3,a3),(a3,a4),
-    (a4,a1),(a4,a2),(a4,a3),(a4,a4));
-    def loop(list: List[(ActorId,ActorId)]): Boolean = {
-      schedule match {
-        case Nil() => true
-        case (actor1,actor2)::q =>
-          checkWriteUser(messages(actor1,actor2)) && loop(q)
-      }
-    }
-    loop(actors)
-  }
-
-  def checkWriteUser(l: List[Messages]):Boolean = {
-    true
-  }
+  
   
   
   def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]) = true
