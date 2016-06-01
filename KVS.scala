@@ -35,6 +35,13 @@ object Protocol {
   val a2: ActorIdSys = ActorIdSys(2)
   val a3: ActorIdSys = ActorIdSys(3)
   val a4: ActorIdUser = ActorIdUser(1)
+
+  val channels = List[(ActorId,ActorId)](
+    (a1,a1),(a1,a2),(a1,a3),(a1,a4),
+    (a2,a1),(a2,a2),(a2,a3),(a2,a4),
+    (a3,a1),(a3,a2),(a3,a3),(a3,a4),
+    (a4,a1),(a4,a2),(a4,a3),(a4,a4)
+  )
   
   val actor1 = SystemActor(a1)
   val actor2 = SystemActor(a2)
@@ -54,9 +61,9 @@ object Protocol {
     }
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor))
+      require(receivePre(this, sender, m))
 
-      printing("recevie System")
+//      printing("receive System")
       (sender, m, state) match {
         case (id, WriteUser(s,i), CommonState(mem,h)) =>
 	        update(CommonState(mem.updated(s,i),h++Set((s,i))));
@@ -81,7 +88,8 @@ object Protocol {
 	      
 	      case (id, WriteWaiting(s,i,hs), CommonState(mem,h)) =>
 	        if (id != myId) {
-	          update(BadState())
+            ()
+//	          update(BadState())
 	        }
 	        else { // I try to use the message as if it came from an other SystemUser
 	          if (checkHistory(h,hs)) {
@@ -97,7 +105,8 @@ object Protocol {
               !! (id, Value(mem(s))) //cannot return None in default case
           }
   	    
-        case _ => update(BadState())
+        case _ => ()
+//          update(BadState())
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
@@ -112,48 +121,55 @@ object Protocol {
 
 
     def init()(implicit net: VerifiedNetwork) = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor))
-      net.messages = net.messages.updated((a1,a1), List())
-      net.messages = net.messages.updated((a1,a2), List())
-      net.messages = net.messages.updated((a1,a3), List())
-      net.messages = net.messages.updated((a1,a4), List())
-      net.messages = net.messages.updated((a2,a1), List())
-      net.messages = net.messages.updated((a2,a2), List())
-      net.messages = net.messages.updated((a2,a3), List())
-      net.messages = net.messages.updated((a2,a4), List())
-      net.messages = net.messages.updated((a3,a1), List())
-      net.messages = net.messages.updated((a3,a2), List())
-      net.messages = net.messages.updated((a3,a3), List())
-      net.messages = net.messages.updated((a3,a4), List())
-      net.messages = net.messages.updated((a4,a1), List(WriteUser("1", 1)))
-      net.messages = net.messages.updated((a4,a2), List(Read("1"), WriteUser("1", 2), Read("1")))
-      net.messages = net.messages.updated((a4,a3), List(Read("1"), Read("1")))
-      net.messages = net.messages.updated((a4,a4), List())
-      state match {
-        case UserState(l) => update(UserState(List( ("1",1,Set()) , ("1",2,Set()) )))
-        case BadState() => update(BadState())
-      }
-    }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
+      require(initPre(myId, net))
+//      require(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
+//      val UserState(l) = state
+//      net.messages = net.messages.updated((a1,a1), List())
+//      net.messages = net.messages.updated((a1,a2), List())
+//      net.messages = net.messages.updated((a1,a3), List())
+//      net.messages = net.messages.updated((a1,a4), List())
+//      net.messages = net.messages.updated((a2,a1), List())
+//      net.messages = net.messages.updated((a2,a2), List())
+//      net.messages = net.messages.updated((a2,a3), List())
+//      net.messages = net.messages.updated((a2,a4), List())
+//      net.messages = net.messages.updated((a3,a1), List())
+//      net.messages = net.messages.updated((a3,a2), List())
+//      net.messages = net.messages.updated((a3,a3), List())
+//      net.messages = net.messages.updated((a3,a4), List())
+//      net.messages = net.messages.updated((a4,a1), List(WriteUser("1", 1)))
+//      net.messages = net.messages.updated((a4,a2), List(Read("1"), WriteUser("1", 2), Read("1")))
+//      net.messages = net.messages.updated((a4,a3), List(Read("1"), Read("1")))
+//      net.messages = net.messages.updated((a4,a4), List())
+//      !! (a1,WriteUser("1", 1))
+      state match {
+        case UserState(l) =>
+          update(UserState( Cons (("1",1,Set()), l)))
+        case BadState() => ()
+      }
+
+    } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-      require{networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == a1 || sender == a2 || sender == a3)}
-      printing("receive User");
+      require (receivePre(this,sender,m))
+//      printing("receive User");
       (sender, m, state) match {
         case (sender, Value(v), UserState(x)) =>
-          printing(PrettyPrinting.messageToString(Value(v)))
-        case _ => update(BadState())
+          ()
+//          printing(PrettyPrinting.messageToString(Value(v)))
+        case _ => ()
+//          update(BadState())
       }
     }  ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
 
   }
 
-  @extern
-  def printing(s: String) = {
-    println(s)
-  }
+//  @extern
+//  def printing(s: String) = {
+//    println(s)
+//  }
 
   @ignore
   def main(args: Array[String]) = {
