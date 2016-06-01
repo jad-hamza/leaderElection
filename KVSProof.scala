@@ -78,6 +78,7 @@ object ProtocolProof {
     WriteHistory(messages, states)
   }
   
+  
   // if there is a Write in a channel then there is the correspondant operation in the history of the User
   def WriteHistory(messages: MMap[(ActorId,ActorId),List[Message]], states:MMap[ActorId, State]): Boolean = {
     require(states.contains(a1) && states.contains(a2) && states.contains(a3) && states.contains(a4))
@@ -107,10 +108,10 @@ object ProtocolProof {
       case UserState(userHistory) =>
         loop(
           List(
-            (a1,a1)//,(a1,a2),(a1,a3),(a1,a4),
+            //(a1,a1),(a1,a2),(a1,a3),(a1,a4),
             //(a2,a1),(a2,a2),(a2,a3),(a2,a4),
             //(a3,a1),(a3,a2),(a3,a3),(a3,a4),
-            //(a4,a1),(a4,a2),(a4,a3),(a4,a4)
+            (a4,a1),(a4,a2),(a4,a3),(a4,a4)
           ),
           userHistory
         )

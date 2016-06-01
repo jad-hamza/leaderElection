@@ -113,19 +113,33 @@ object Protocol {
 
     def init()(implicit net: VerifiedNetwork) = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor))
+      net.messages = net.messages.updated((a1,a1), List())
+      net.messages = net.messages.updated((a1,a2), List())
+      net.messages = net.messages.updated((a1,a3), List())
+      net.messages = net.messages.updated((a1,a4), List())
+      net.messages = net.messages.updated((a2,a1), List())
+      net.messages = net.messages.updated((a2,a2), List())
+      net.messages = net.messages.updated((a2,a3), List())
+      net.messages = net.messages.updated((a2,a4), List())
+      net.messages = net.messages.updated((a3,a1), List())
+      net.messages = net.messages.updated((a3,a2), List())
+      net.messages = net.messages.updated((a3,a3), List())
+      net.messages = net.messages.updated((a3,a4), List())
       net.messages = net.messages.updated((a4,a1), List(WriteUser("1", 1)))
       net.messages = net.messages.updated((a4,a2), List(Read("1"), WriteUser("1", 2), Read("1")))
       net.messages = net.messages.updated((a4,a3), List(Read("1"), Read("1")))
+      net.messages = net.messages.updated((a4,a4), List())
       state match {
-        case UserState(l) => update(UserState(Cons(("1",1,Set()), Cons( ("1",2,Set()),l))))
+        case UserState(l) => update(UserState(List( ("1",1,Set()) , ("1",2,Set()) )))
         case BadState() => update(BadState())
       }
     }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
-    
+
+
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == a1 || sender == a2 || sender == a3))
-      printing("receive User")
+      require{networkInvariant(net.param, net.states, net.messages, net.getActor) && (sender == a1 || sender == a2 || sender == a3)}
+      printing("receive User");
       (sender, m, state) match {
         case (sender, Value(v), UserState(x)) =>
           printing(PrettyPrinting.messageToString(Value(v)))
