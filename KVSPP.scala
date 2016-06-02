@@ -19,7 +19,7 @@ object PrettyPrinting {
     s match {
       case CommonState(x,h) => "CommonState(" + historyToString(h) + ")"
       case BadState() => "BadState"
-      case UserState(l) => "UserState"
+      case UserState(l,counter) => "UserState"
     }
   }
   
@@ -38,10 +38,10 @@ object PrettyPrinting {
     def loop (l:List[ActorId]): String = {
       l match {
   	case Nil() => ""
-	case Cons(x,q) => 
+	  case Cons(x,q) => 
   	  if (m.contains(x))
 	    actorIdToString(x) + " -> " + stateToString(m(x)) + "\n" + loop(q)	
-	  else 
+	   else 
             actorIdToString(x) + " -> None \n" + loop(q)
       }
     }
@@ -62,18 +62,26 @@ object PrettyPrinting {
     loop(List(a1,a2,a3,a4))
   }
   
-  def historyToString(h: Set[(String,BigInt)]): String = {
-    Set.mkString(h, ",", (x:(String,BigInt)) => x._1 + ", " + x._2)
+  def historyToString(h: Set[(ActorId,BigInt)]): String = {
+    Set.mkString(h, ",", (x:(ActorId,BigInt)) => actorIdToString(x._1) + ", " + x._2)
+  }
+  
+  def idMessageToSring(idM:(ActorId,BigInt)):String = {
+    actorIdToString(idM._1) + ", " + idM._2
+  }
+  
+  def variableToString(x:Variable) = {
+    "var(" + x.get() + ")"
   }
   
   def messageToString(m: Message) = {
     m match  {
       case Value(x) => "Value(" + x + ")"
-      case Read(s) => "Read(" + s + ")"
-      case WriteUser(s, i) => "WriteUser(" + s + ", " + i + ")"
-      case WriteSystem(s, i, h) => "WriteSystem(" + s + ", " + i + ", " + historyToString(h) + ")"
-      case WriteWaiting(s,i,h) => "WriteWaiting(" + s + ", " + i + ", " + historyToString(h) + ")"
-      case AckUser(x,v,h) => "AckUser(" + x + ", " + v + ", "+ historyToString(h) + ")"
+      case Read(s) => "Read(" + variableToString(s) + ")"
+      case WriteUser(s, i, idM) => "WriteUser(" + variableToString(s) + ", " + i + ", id(" + idMessageToSring(idM) + "))"
+      case WriteSystem(s, i,idM, h) => "WriteSystem(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
+      //case WriteWaiting(s,i,idM, h) => "WriteWaiting(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
+      case AckUser(idM, h) => "AckUser(" + idMessageToSring(idM) + ", "+ historyToString(h) + ")"
     }
   }
   
