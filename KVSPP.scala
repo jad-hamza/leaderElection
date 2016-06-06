@@ -80,7 +80,7 @@ object PrettyPrinting {
       case Read(s) => "Read(" + variableToString(s) + ")"
       case WriteUser(s, i, idM) => "WriteUser(" + variableToString(s) + ", " + i + ", id(" + idMessageToSring(idM) + "))"
       case WriteSystem(s, i,idM, h) => "WriteSystem(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
-      //case WriteWaiting(s,i,idM, h) => "WriteWaiting(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
+      case WriteWaiting(s,i,idM, h) => "WriteWaiting(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
       case AckUser(idM, h) => "AckUser(" + idMessageToSring(idM) + ", "+ historyToString(h) + ")"
     }
   }

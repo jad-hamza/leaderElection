@@ -19,7 +19,7 @@ object Protocol {
   case class WriteUser(s: Variable, i: BigInt, id:(ActorId,BigInt)) extends Message
   case class AckUser(id:(ActorId,BigInt), history: Set[(ActorId, BigInt)]) extends Message
   case class WriteSystem(s: Variable, i: BigInt,id:(ActorId,BigInt), history: Set[(ActorId,BigInt)]) extends Message
-  //case class WriteWaiting(s: Variable, i: BigInt,id:(ActorId,BigInt), history: Set[(ActorId,BigInt)]) extends Message
+  case class WriteWaiting(s: Variable, i: BigInt,id:(ActorId,BigInt), history: Set[(ActorId,BigInt)]) extends Message
   case class Read(s: Variable) extends Message
   case class Value(v: BigInt) extends Message
 
@@ -31,7 +31,7 @@ object Protocol {
   case class ActorIdUser(i: BigInt) extends ActorId
 
   // this protocol does not need a parameter
-  case class NoParam() extends Parameter
+  case class Variables(variables: List[Variable]) extends Parameter
 
   val a1: ActorIdSys = ActorIdSys(1)
   val a2: ActorIdSys = ActorIdSys(2)
@@ -50,9 +50,9 @@ object Protocol {
   val actor3 = SystemActor(a3)
   val actor4 = UserActor(a4)
     
-    def checkHistory(receiverHistory: Set[(ActorId,BigInt)], idM:(ActorId,BigInt))(implicit net: VerifiedNetwork):Boolean = {
+    def checkHistory(receiverHistory: Set[(ActorId,BigInt)], messageHistory: Set[(ActorId,BigInt)])(implicit net: VerifiedNetwork):Boolean = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor))
-     !receiverHistory.contains(idM)
+     messageHistory.subsetOf(receiverHistory)
     }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
     
   case class SystemActor(myId: ActorId) extends Actor {
@@ -64,29 +64,42 @@ object Protocol {
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
       require(receivePre(this, sender, m))
-
+        
+        val Variables(variables) = net.param
+        
 //      printing("receive System")
       (sender, m, state) match {
         case (id, WriteUser(s,i,idM), CommonState(mem,h)) =>
 	        update(CommonState(mem.updated(s,i),h++Set(idM)));
-	        if(myId != a1){
+	        if(myId != a1 && variables.contains(s)){
             !! (a1, WriteSystem(s,i,idM,h))
           };
-          if(myId != a2){
+          if(myId != a2 && variables.contains(s)){
             !! (a2, WriteSystem(s,i,idM,h))
           };
-          if(myId != a3){
+          if(myId != a3 && variables.contains(s)){
             !! (a3, WriteSystem(s,i,idM,h))
           };
           !! (a4, AckUser(idM,h))
 
         case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
-	        if (checkHistory(h,idM)) {
+	        if (checkHistory(h,hs) && variables.contains(s)) {
 	          update(CommonState(mem.updated(s,i),h++Set(idM)));
+	        }
+	        else {
+                !! (myId,WriteWaiting(s,i,idM,hs))
+	        }
+        
+        case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) =>
+            if (checkHistory(h,hs) && variables.contains(s)) {
+	          update(CommonState(mem.updated(s,i),h++Set(idM)));
+	        }
+	        else {
+                !! (myId,WriteWaiting(s,i,idM,hs))
 	        }
 
         case (id,Read(s), CommonState(mem,h)) =>
-          if (id == a4 && mem.contains(s)) {
+          if (id == a4 && mem.contains(s) && variables.contains(s)) {
               !! (id, Value(mem(s))) //cannot return None in default case
           }
   	    
@@ -102,19 +115,19 @@ object Protocol {
   case class UserActor(myId: ActorId) extends Actor {
     require(myId == ActorIdUser(1))
 
-    var x: Option[BigInt] = None[BigInt]
-
 
     def init()(implicit net: VerifiedNetwork) = {
       require(initPre(myId, net))
+      val Variables(variables) = net.param
       state match {
         case UserState(l,counter) =>
-          //!! (a1,WriteUser(Variable(1), 1, (a4,counter)))
-          update(UserState( Cons (((a4,1),Set()), l), counter+1))
+          !! (a1,WriteUser(Variable(1), 1, (a4,counter)))
+          net.param = Variables(Cons(Variable(1), variables))
+          update(UserState( Cons (((a4,counter),Set()), l), counter+1))
         case BadState() => ()
       }
 
-    } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
+    } ensuring{networkInvariant(net.param, net.states, net.messages,            net.getActor)}
 
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
