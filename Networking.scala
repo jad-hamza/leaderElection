@@ -60,7 +60,6 @@ object Networking {
       }
     } ensuring(_ => networkInvariant(net.param, net.states, net.messages, net.getActor))
     
-  
     initial_actor.init()(net)
     loop(schedule)
   

@@ -57,22 +57,23 @@ object ProtocolProof {
   
   // This is an invariant of the class VerifiedNetwork
   def networkInvariant(param: Parameter, states: MMap[ActorId, State], messages: MMap[(ActorId,ActorId),List[Message]], getActor: MMap[ActorId,Actor]) = {
-    states.contains(a1) &&
-    states.contains(a2) &&
-    states.contains(a3) &&
-    states.contains(a4) && 
-    getActor.contains(a1) &&
-    getActor.contains(a2) &&  
-    getActor.contains(a3) &&
-    getActor.contains(a4) &&
-    messages.getOrElse((a4,a4), Nil()).isEmpty &&
-    getActor(a1) == SystemActor(a1) &&
-    getActor(a2) == SystemActor(a2) &&
-    getActor(a3) == SystemActor(a3) &&
-    getActor(a4) == UserActor(a4) && 
-    WriteHistory(messages, states) && 
-    WriteSysHistory(messages, states) &&
-    WriteWaitHistory(messages, states)
+//     states.contains(a1) &&
+//     states.contains(a2) &&
+     states.contains(a3) &&
+//     states.contains(a4) && 
+//     getActor.contains(a1) &&
+//     getActor.contains(a2) &&  
+//     getActor.contains(a3) &&
+//     getActor.contains(a4) &&
+//     messages.getOrElse((a4,a4), Nil()).isEmpty &&
+//     getActor(a1) == SystemActor(a1) &&
+//     getActor(a2) == SystemActor(a2) &&
+//     getActor(a3) == SystemActor(a3) &&
+//     getActor(a4) == UserActor(a4) 
+    //WriteHistory(messages, states) && 
+    //WriteSysHistory(messages, states) &&
+    //WriteWaitHistory(messages, states)&&
+    true
   }
 
   //function to prove WriteHistory
@@ -389,21 +390,10 @@ object ProtocolProof {
 
     (sender, m, receiver.state) match {
       case (id, WriteUser(s,i,idM), CommonState(mem,h)) =>
-//        update(CommonState(mem.updated(s,i),h++Set((s,i))));
-//        if(myId != a1){
-            //checkWriteForAll(channels, net.messages, userHistory)&& //to easilycheck precondition of ajoutcheckWriteForAll
             ((myId != a1 && ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a1)) || (myId == a1)) &&
-//          !! (a1, WriteSystem(s,i,h))
-//        } &&
-//        if(myId != a2){
             ((myId != a2 && ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a2)) || (myId == a2)) &&
-//          !! (a2, WriteSystem(s,i,h))
-//        };
-//        if(myId != a3){
             ((myId != a3 && ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a3)) || (myId == a3))
-//          !! (a3, WriteSystem(s,i,h))
-//        };
-//        !! (a4, AckUser(s,i,h))
+
       case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
         (checkHistory(h,hs) || ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,h), myId, myId))
     
@@ -413,13 +403,10 @@ object ProtocolProof {
       case (id,Read(s), CommonState(mem,h)) =>
         if (id == a4 && mem.contains(s)) {
           ajoutCheckWriteForAll(channels, net.messages, userHistory, Value(mem(s)), myId, id)
-//          true
-//          !! (id, Value(mem(s))) //cannot return None in default case
         }
         else true
 
       case _ => true
-//        update(BadState())
     }
   }
   
@@ -427,6 +414,7 @@ object ProtocolProof {
     networkInvariant(net.param, net.states, net.messages, net.getActor)  && net.states.contains(sender) && net.states.contains(a.myId) && (
     m match {
         case WriteUser(x,v,idM) => WriteHistory(net.messages,net.states)
+        case WriteSystem(x,v,idM,h) => WriteSysHistory(net.messages,net.states)
         case _ => true
     }) && (
     a match {
@@ -459,14 +447,29 @@ object ProtocolProof {
 
 
 
+//   def initPre(myId: ActorId, net: VerifiedNetwork) = {
+//     myId == a4 &&
+//     networkInvariant(net.param, net.states, net.messages, net.getActor) && {
+//       val UserState(h,c) = net.states(myId)
+// //       ajoutUserCheckWriteForAll(channels, net.messages, h, ((a4,c), Set())) &&
+// //       ajoutUserCheckWriteSysForAll(channels, net.messages, h, ((a4,c), Set())) &&
+// //       ajoutUserCheckWriteWaitForAll(channels, net.messages, h, ((a4,c), Set())) && 
+//       h.contains(((a4,c),Set()))
+//       //ajoutCheckWriteForAll(channels, net.messages, Cons(((a4,c),Set()), h), WriteUser(Variable(1),1,(a4,c)), myId, a1)(net)
+//       }
+//   }
+
   def initPre(myId: ActorId, net: VerifiedNetwork) = {
-    myId == a4 && //net.param == Variables(Nil()) &&
-    networkInvariant(net.param, net.states, net.messages, net.getActor) && {
-      val UserState(h,c) = net.states(myId)
-      ajoutUserCheckWriteForAll(channels, net.messages, h, ((a4,c), Set())) &&
-      ajoutUserCheckWriteSysForAll(channels, net.messages, h, ((a4,c), Set())) &&
-      ajoutUserCheckWriteWaitForAll(channels, net.messages, h, ((a4,c), Set())) 
-      }
+    //myId == a4 &&
+    networkInvariant(net.param, net.states, net.messages, net.getActor) && 
+     false
+//     val newStates = net.states.updated(a4,UserState(Cons(((a4,c),Set()), h),c+1))
+//     val messages = net.messages.getOrElse((a4,a1), Nil())
+//     val newMessages = net.messages.updated((a4,a1),messages:+WriteUser(Variable(1),1,(a4,c)))
+//     
+//     networkInvariant(net.param, newStates, net.messages, net.getActor) && 
+//     networkInvariant(net.param, newStates, newMessages, net.getActor) 
+    
   }
   
   

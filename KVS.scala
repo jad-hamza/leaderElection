@@ -122,12 +122,12 @@ object Protocol {
       state match {
         case UserState(l,counter) =>
           !! (a1,WriteUser(Variable(1), 1, (a4,counter)))
-          net.param = Variables(Cons(Variable(1), variables))
+          //net.param = Variables(Cons(Variable(1), variables))
           update(UserState( Cons (((a4,counter),Set()), l), counter+1))
         case BadState() => ()
       }
 
-    } ensuring{networkInvariant(net.param, net.states, net.messages,            net.getActor)}
+    } ensuring{networkInvariant(net.param, net.states, net.messages, net.getActor)}
 
 
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
