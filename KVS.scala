@@ -70,20 +70,20 @@ object Protocol {
 //      printing("receive System")
       (sender, m, state) match {
         case (id, WriteUser(s,i,idM), CommonState(mem,h)) =>
-	        update(CommonState(mem.updated(s,i),h++Set(idM)));
-	        if(myId != a1 && variables.contains(s)){
-            !! (a1, WriteSystem(s,i,idM,h))
-          };
-          if(myId != a2 && variables.contains(s)){
-            !! (a2, WriteSystem(s,i,idM,h))
-          };
-          if(myId != a3 && variables.contains(s)){
-            !! (a3, WriteSystem(s,i,idM,h))
-          };
-          !! (a4, AckUser(idM,h))
+            update(CommonState(mem.updated(s,i),h++Set(idM)));
+            if(myId != a1){
+              !! (a1, WriteSystem(s,i,idM,h))
+            };
+            if(myId != a2){
+              !! (a2, WriteSystem(s,i,idM,h))
+            };
+            if(myId != a3){
+              !! (a3, WriteSystem(s,i,idM,h))
+            };
+            !! (a4, AckUser(idM,h))
 
         case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
-	        if (checkHistory(h,hs) && variables.contains(s)) {
+	        if (checkHistory(h,hs)) {
 	          update(CommonState(mem.updated(s,i),h++Set(idM)));
 	        }
 	        else {
@@ -91,7 +91,7 @@ object Protocol {
 	        }
         
         case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) =>
-            if (checkHistory(h,hs) && variables.contains(s)) {
+            if (checkHistory(h,hs)) {
 	          update(CommonState(mem.updated(s,i),h++Set(idM)));
 	        }
 	        else {
@@ -99,8 +99,8 @@ object Protocol {
 	        }
 
         case (id,Read(s), CommonState(mem,h)) =>
-          if (id == a4 && mem.contains(s) && variables.contains(s)) {
-              !! (id, Value(mem(s))) //cannot return None in default case
+          if (id == a4) {
+              !! (id, Value(mem(s)))
           }
   	    
         case _ => ()
