@@ -108,9 +108,24 @@ object Protocol {
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
+  
+  
+  def receive2(sender: ActorId, m: Message, userHistory: List[(ActorId,BigInt)])(implicit net: VerifiedNetwork) = {
+      require(checkWrite2(net.messages((sender,a1)), userHistory))
+        
+      (sender, m, state) match {
+        case (id, WriteUser(s,i,idM), CommonState(mem,h)) =>
+            !! (a1, WriteSystem(s,i,(a1,1),h))
+
+        case (id,Read(s), CommonState(mem,h)) =>
+              !! (id, Value(0))
+
+        case _ => ()
+//          update(BadState())
+      }
+    } ensuring(checkWrite2(net.messages((sender,a1)), userHistory))
+
   }
-
-
 
   case class UserActor(myId: ActorId) extends Actor {
     require(myId == ActorIdUser(1))
@@ -122,7 +137,6 @@ object Protocol {
       state match {
         case UserState(l,counter) =>
           !! (a1,WriteUser(Variable(1), 1, (a4,counter)))
-          //net.param = Variables(Cons(Variable(1), variables))
           update(UserState( Cons (((a4,counter),Set()), l), counter+1))
         case BadState() => ()
       }

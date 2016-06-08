@@ -11,7 +11,7 @@ import Networking._
 object FifoNetwork  {
   
   case class VerifiedNetwork(
-      var param: Parameter,
+      param: Parameter,
       var states: MMap[ActorId,State], 
       var messages: MMap[(ActorId,ActorId),List[Message]], 
       getActor: MMap[ActorId,Actor])  {
