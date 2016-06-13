@@ -83,16 +83,14 @@ object ProtocolProof {
     )
   val init_getActor = MMap.makeMap[ActorId,Actor](init_getActor_list)
     
-  def checkContain[A,B](l: List[(A,B)], m: MMap[A,B]): Boolean  = {
+  def checkContent[A,B](l: List[(A,B)], m: MMap[A,B]): Boolean  = {
     l match {
       case Nil() => true
-      case Cons((x,v), xs) => m.contains(x) && checkContain(xs, m)
+      case Cons((x,v), xs) => m.contains(x) && checkContent(xs, m)
     }
   }
   
   def makeNetwork(p: Parameter) = {
-  
-    //val init_getActor2 = init_getActor.updated(a1, SystemActor(a1))
   
     VerifiedNetwork(init_param,
 		init_states, 
@@ -102,9 +100,8 @@ object ProtocolProof {
   }ensuring(res => 
     writeEmpty(res.states) && 
     WriteHistory(res.messages, res.states) && 
-    checkContain(init_states_list, init_states) && 
-    checkContain(init_getActor_list, init_getActor) &&
-    //checkContainMessages(init_messages) &&
+    checkContent(init_states_list, init_states) && 
+    checkContent(init_getActor_list, init_getActor) &&
     res.getActor(a1) == SystemActor(a1) &&
     res.getActor(a2) == SystemActor(a2) &&
     res.getActor(a3) == SystemActor(a3) &&
@@ -262,7 +259,6 @@ object ProtocolProof {
     sms match {
       case Cons(x, xs) if (x == m) => 
         val messages2 = n.messages.updated((sender,receiver), xs);
-        //((receiver == a4) ==> (sender == a1 || sender == a2 || sender == a3)) && {
           n.states(a4) match {
             case UserState(h,counter) =>
               removeCheckWriteForAll(channels, n.messages, h, sender, receiver) &&
@@ -273,7 +269,6 @@ object ProtocolProof {
               true
             case _ => networkInvariant(n.param, n.states, messages2, n.getActor)
           }
-        //}
  
       case _ => 
         true
@@ -324,7 +319,6 @@ object ProtocolProof {
     val UserState(x,v) = states(a4)
     checkWriteForAllEmpty(channels, x) &&
     checkWriteForAll(channels, init_messages, x)
-    //WriteHistory(init_messages, states)
   }holds
   
   
