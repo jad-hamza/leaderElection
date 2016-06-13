@@ -39,7 +39,6 @@ object FifoNetwork  {
       )
       
       val sms = messages.getOrElse((sender,receiver), Nil())
-      
     
       sms match {
         case Cons(x, xs) if (x == m) => 

@@ -62,12 +62,24 @@ object PrettyPrinting {
     loop(List(a1,a2,a3,a4))
   }
   
-  def historyToString(h: Set[(ActorId,BigInt)]): String = {
-    Set.mkString(h, ",", (x:(ActorId,BigInt)) => actorIdToString(x._1) + ", " + x._2)
+  def historyToString(h: Set[(Boolean, Variable, BigInt)]): String = {
+    Set.mkString(h, ",", (x:(Boolean, Variable, BigInt)) => 
+    if (x._1) {
+      "write(" + variableToString(x._2) + ", " + x._3 + ")"
+    }
+    else {
+      "read(" + variableToString(x._2) + ")"
+    }
+    )
   }
   
-  def idMessageToSring(idM:(ActorId,BigInt)):String = {
-    actorIdToString(idM._1) + ", " + idM._2
+  def idMessageToSring(x:(Boolean, Variable, BigInt)):String = {
+    if (x._1) {
+      "write(" + variableToString(x._2) + ", " + x._3 + ")"
+    }
+    else {
+      "read(" + variableToString(x._2) + ")"
+    }
   }
   
   def variableToString(x:Variable) = {
@@ -76,8 +88,8 @@ object PrettyPrinting {
   
   def messageToString(m: Message) = {
     m match  {
-      case Value(x) => "Value(" + x + ")"
-      case Read(s) => "Read(" + variableToString(s) + ")"
+      case Value(x, idM, h) => "Value(" + x + ")"
+      case Read(s, idM) => "Read(" + variableToString(s) + ")"
       case WriteUser(s, i, idM) => "WriteUser(" + variableToString(s) + ", " + i + ", id(" + idMessageToSring(idM) + "))"
       case WriteSystem(s, i,idM, h) => "WriteSystem(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
       case WriteWaiting(s,i,idM, h) => "WriteWaiting(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"

@@ -11,7 +11,7 @@ import leon.lang._
 object Networking {
   
   abstract class ActorId
-  abstract class Message
+  abstract class Message 
   abstract class State
   abstract class Parameter
   

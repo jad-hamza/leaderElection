@@ -24,8 +24,8 @@ case class MMap[A,B](f: A => B) {
   
 }
 
-object MMap {
-
-  def makeMap[A,B](b: B): MMap[A,B] = MMap((x: A) => b)
-
-}
+// object MMap {
+// 
+//   def makeMap[A,B](b: B): MMap[A,B] = MMap((x: A) => b)
+// 
+// }
