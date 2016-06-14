@@ -33,6 +33,8 @@ object Protocol {
   // this protocol does not need a parameter
   case class Variables(variables: List[Variable]) extends Parameter
 
+  val correct_variables = List(Variable(1))
+  
   val a1: ActorIdSys = ActorIdSys(1)
   val a2: ActorIdSys = ActorIdSys(2)
   val a3: ActorIdSys = ActorIdSys(3)
@@ -69,14 +71,16 @@ object Protocol {
 //      printing("receive System")
       (sender, m, state) match {
         case (id, WriteUser(s,i,idM), CommonState(mem,h)) =>
-          update(CommonState(mem.updated(s,i),h++Set(idM)));
-          !! (a1, WriteSystem(s,i,idM,h))
-          !! (a2, WriteSystem(s,i,idM,h))
-          !! (a3, WriteSystem(s,i,idM,h))
-          !! (a4, AckUser(idM,h))
-
+          if (idM == (true, s, i)) {
+            update(CommonState(mem.updated(s,i),h++Set(idM)));
+            !! (a1, WriteSystem(s,i,idM,h))
+            !! (a2, WriteSystem(s,i,idM,h))
+            !! (a3, WriteSystem(s,i,idM,h))
+            !! (a4, AckUser(idM,h))
+          }
+            
         case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
-	        if (id != myId) {
+	        if (id != myId && (idM == (true, s, i))) {
             if (checkHistory(h,hs)) {
               update(CommonState(mem.updated(s,i),h++Set(idM)));
             }
@@ -86,16 +90,18 @@ object Protocol {
           }
         
         case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) =>
-          if (checkHistory(h,hs)) {
-	          update(CommonState(mem.updated(s,i),h++Set(idM)));
-	        }
-	        else {
-                !! (myId,WriteWaiting(s,i,idM,hs))
-	        }
+          if (idM == (true, s, i)) {
+            if (checkHistory(h,hs)) {
+              update(CommonState(mem.updated(s,i),h++Set(idM)));
+            }
+            else {
+                  !! (myId,WriteWaiting(s,i,idM,hs))
+            }
+          }
 
         case (id,Read(s, idM), CommonState(mem,h)) =>
-          if (id == a4) {
-              !! (id, Value(mem.getOrElse(s,0), idM, h))
+          if (id == a4 && (idM._1 == false) && (idM._2 == s)) {
+              !! (id, Value(mem.getOrElse(s,0), (idM._1, idM._2, mem.getOrElse(s,0)), h))
           }
   	    
         case _ => ()
