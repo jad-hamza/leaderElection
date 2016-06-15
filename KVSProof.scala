@@ -167,6 +167,211 @@ object ProtocolProof {
      true
   }
   
+  def systemActorReceivePreCase1(
+    receiver: Actor, 
+    sender: ActorId, 
+    m: Message
+    )(implicit net: VerifiedNetwork): Boolean = {
+    require{
+      (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
+      networkInvariant(net.param, net.states, net.messages, net.getActor) && 
+      {
+      val UserState(userHistory,c) = net.states(a4)
+      m match {
+        case WriteUser(x,v,idM) => userHistory.contains((idM,Set()))
+        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case _ => true
+      }
+      } && 
+      {
+      (sender, m, receiver.state) match{
+        case (id, WriteUser(s,i,idM), CommonState(mem,h)) => true
+        case _ => false
+      }
+      }
+    }
+  
+    val UserState(userHistory,c) = net.states(a4)
+    val myId = receiver.myId
+    val id = sender
+    val WriteUser(s,i,idM) = m
+    val CommonState(mem,h) = receiver.state
+    
+    if (idM == (true, s, i)) {
+      val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s, i))))
+      val Variables(variables) = net.param
+      val newMessages = net.messages.updated((myId,a1), net.messages.getOrElse((myId,a1), Nil()) :+ WriteSystem(s,i,idM,h))
+      val newMessages2 = newMessages.updated((myId,a2), newMessages.getOrElse((myId,a2),Nil()) :+ WriteSystem(s,i,idM,h))
+      val newMessages3 = newMessages2.updated((myId,a3), newMessages2.getOrElse((myId,a3), Nil()) :+ WriteSystem(s,i,idM,h))
+      val newMessages4 = newMessages3.updated((myId,a4), newMessages3.getOrElse((myId,a4),Nil()) :+ AckUser(idM,h))
+      val UserState(newUserHistory,newc) = newStates(a4)
+      (userHistory == newUserHistory) &&
+      (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a1)) &&
+      (ajoutCheckWriteForAll(channels, newMessages, userHistory, WriteSystem(s,i,idM,h), myId, a2)) &&
+      (ajoutCheckWriteForAll(channels, newMessages2, userHistory, WriteSystem(s,i,idM,h), myId, a3)) &&
+      (ajoutCheckWriteForAll(channels, newMessages3, userHistory, AckUser(idM,h), myId, a4)) &&
+      WriteHistory(newMessages, net.states)  &&
+      newUserHistory.contains((true, s, i), Set()) &&
+      updateCheckTable(net.param, net.states, s, i, myId) &&
+      tableHistory(net.param, newStates) &&
+      networkInvariant(net.param, newStates, newMessages4, net.getActor) &&
+      true
+    }
+    else true
+  }holds
+  
+  def systemActorReceivePreCase2(
+    receiver: Actor, 
+    sender: ActorId, 
+    m: Message
+    )(implicit net: VerifiedNetwork): Boolean = {
+    require{
+      (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
+      networkInvariant(net.param, net.states, net.messages, net.getActor) && 
+      {
+      val UserState(userHistory,c) = net.states(a4)
+      m match {
+        case WriteUser(x,v,idM) => userHistory.contains((idM,Set()))
+        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case _ => true
+      }
+      } && 
+      {
+      (sender, m, receiver.state) match{
+        case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) => true
+        case _ => false
+      }
+      }
+    }
+  
+    val UserState(userHistory,c) = net.states(a4)
+    val myId = receiver.myId
+    val id = sender
+    val WriteSystem(s,i,idM,hs) = m
+    val CommonState(mem,h) = receiver.state
+    
+    if (id != myId && (idM == (true, s, i))) {
+      if (checkHistory(h,hs)){
+        val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set(idM)))
+        val UserState(newUserHistory,newc) = newStates(a4)
+        (userHistory == newUserHistory) &&
+        newUserHistory.contains((true, s, i), Set()) &&
+        updateCheckTable(net.param, net.states, s, i, myId) &&
+        tableHistory(net.param, newStates) &&
+        WriteHistory(net.messages, newStates)  &&
+        networkInvariant(net.param, newStates, net.messages, net.getActor)
+      }
+      else {
+        val newMessages = net.messages.updated((myId,myId), net.messages.getOrElse((myId,myId), Nil()) :+ WriteWaiting(s,i,idM,hs))
+        (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
+        WriteHistory(newMessages, net.states)  &&
+        tableHistory(net.param, net.states) &&
+        networkInvariant(net.param, net.states, newMessages, net.getActor)
+      }
+    }
+    else {
+      true 
+    }
+  }holds
+  
+  def systemActorReceivePreCase3(
+    receiver: Actor, 
+    sender: ActorId, 
+    m: Message
+    )(implicit net: VerifiedNetwork): Boolean = {
+    require{
+      (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
+      networkInvariant(net.param, net.states, net.messages, net.getActor) && 
+      {
+      val UserState(userHistory,c) = net.states(a4)
+      m match {
+        case WriteUser(x,v,idM) => userHistory.contains((idM,Set()))
+        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case _ => true
+      }
+      } && 
+      {
+      (sender, m, receiver.state) match{
+        case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) => true
+        case _ => false
+      }
+      }
+    }
+  
+    val UserState(userHistory,c) = net.states(a4)
+    val myId = receiver.myId
+    val id = sender
+    val WriteWaiting(s,i,idM,hs) = m
+    val CommonState(mem,h) = receiver.state
+    
+    if (idM == (true, s, i)) {
+      if (checkHistory(h,hs)){
+        val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set(idM)))
+        val UserState(newUserHistory,newc) = newStates(a4)
+        (userHistory == newUserHistory) &&
+        newUserHistory.contains((true, s, i), Set()) &&
+        updateCheckTable(net.param, net.states, s, i, myId) &&
+        tableHistory(net.param, newStates) &&
+        WriteHistory(net.messages, newStates)  &&
+        networkInvariant(net.param, newStates, net.messages, net.getActor)
+      }
+      else {
+        val newMessages = net.messages.updated((myId,myId), net.messages.getOrElse((myId,myId), Nil()) :+ WriteWaiting(s,i,idM,hs))
+        (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
+        WriteHistory(newMessages, net.states)  &&
+        tableHistory(net.param, net.states) &&
+        networkInvariant(net.param, net.states, newMessages, net.getActor)
+      }
+    }
+    else true
+  }holds
+  
+  def systemActorReceivePreCase4(
+    receiver: Actor, 
+    sender: ActorId, 
+    m: Message
+    )(implicit net: VerifiedNetwork): Boolean = {
+    require{
+      (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
+      networkInvariant(net.param, net.states, net.messages, net.getActor) && 
+      {
+      val UserState(userHistory,c) = net.states(a4)
+      m match {
+        case WriteUser(x,v,idM) => userHistory.contains((idM,Set()))
+        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case _ => true
+      }
+      } && 
+      {
+      (sender, m, receiver.state) match{
+        case (id,Read(s,idM), CommonState(mem,h)) => true
+        case _ => false
+      }
+      }
+    }
+  
+    val UserState(userHistory,c) = net.states(a4)
+    val myId = receiver.myId
+    val id = sender
+    val Read(s,idM) = m
+    val CommonState(mem,h) = receiver.state
+    
+    if (id == a4 && (idM._1 == false) && (idM._2 == s)) {
+      val newMessages = net.messages.updated((myId,a4), net.messages.getOrElse((myId,a4), Nil()) :+ Value(mem.getOrElse(s,0),(idM._1, idM._2, mem.getOrElse(s,0)),h))
+      ajoutCheckWriteForAll(channels, net.messages, userHistory, Value(mem.getOrElse(s,0), (idM._1, idM._2, mem.getOrElse(s,0)), h), myId, id) &&
+      WriteHistory(newMessages, net.states)  &&
+      tableHistory(net.param, net.states) &&
+      networkInvariant(net.param, net.states, newMessages, net.getActor)
+    }
+    else true
+  }holds
+  
+  
+  
   def systemActorReceivePre(receiver: Actor, sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
     (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
     networkInvariant(net.param, net.states, net.messages, net.getActor) && 
@@ -184,83 +389,16 @@ object ProtocolProof {
 
     (sender, m, receiver.state) match {
       case (id, WriteUser(s,i,idM), CommonState(mem,h)) => 
-        if (idM == (true, s, i)) {
-          val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s, i))))
-          val Variables(variables) = net.param
-          val newMessages = net.messages.updated((myId,a1), net.messages.getOrElse((myId,a1), Nil()) :+ WriteSystem(s,i,idM,h))
-          val newMessages2 = newMessages.updated((myId,a2), newMessages.getOrElse((myId,a2),Nil()) :+ WriteSystem(s,i,idM,h))
-          val newMessages3 = newMessages2.updated((myId,a3), newMessages2.getOrElse((myId,a3), Nil()) :+ WriteSystem(s,i,idM,h))
-          val newMessages4 = newMessages3.updated((myId,a4), newMessages3.getOrElse((myId,a4),Nil()) :+ AckUser(idM,h))
-          val UserState(newUserHistory,newc) = newStates(a4)
-          (userHistory == newUserHistory) &&
-          (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a1)) &&
-          (ajoutCheckWriteForAll(channels, newMessages, userHistory, WriteSystem(s,i,idM,h), myId, a2)) &&
-          (ajoutCheckWriteForAll(channels, newMessages2, userHistory, WriteSystem(s,i,idM,h), myId, a3)) &&
-          (ajoutCheckWriteForAll(channels, newMessages3, userHistory, AckUser(idM,h), myId, a4)) &&
-          WriteHistory(newMessages, net.states)  &&
-          newUserHistory.contains((true, s, i), Set()) &&
-          updateCheckTable(net.param, net.states, s, i, myId) &&
-          tableHistory(net.param, newStates) &&
-          networkInvariant(net.param, newStates, newMessages4, net.getActor) &&
-          true
-        }
-        else true
-
+        systemActorReceivePreCase1(receiver, sender, m)
+        
       case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
-        if (id != myId && (idM == (true, s, i))) {
-          if (checkHistory(h,hs)){
-            val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set(idM)))
-            val UserState(newUserHistory,newc) = newStates(a4)
-            (userHistory == newUserHistory) &&
-            newUserHistory.contains((true, s, i), Set()) &&
-            updateCheckTable(net.param, net.states, s, i, myId) &&
-            tableHistory(net.param, newStates) &&
-            WriteHistory(net.messages, newStates)  &&
-            networkInvariant(net.param, newStates, net.messages, net.getActor)
-          }
-          else {
-            val newMessages = net.messages.updated((myId,myId), net.messages.getOrElse((myId,myId), Nil()) :+ WriteWaiting(s,i,idM,hs))
-            (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
-            WriteHistory(newMessages, net.states)  &&
-            tableHistory(net.param, net.states) &&
-            networkInvariant(net.param, net.states, newMessages, net.getActor)
-           }
-         }
-         else {
-           true 
-         }
-     
-//       case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) => 
-//         if (idM == (true, s, i)) {
-//           if (checkHistory(h,hs)){
-//             val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set(idM)))
-//             val UserState(newUserHistory,newc) = newStates(a4)
-//             (userHistory == newUserHistory) &&
-//             newUserHistory.contains((true, s, i), Set()) &&
-//             updateCheckTable(net.param, net.states, s, i, myId) &&
-//             tableHistory(net.param, newStates) &&
-//             WriteHistory(net.messages, newStates)  &&
-//             networkInvariant(net.param, newStates, net.messages, net.getActor)
-//           }
-//           else {
-//             val newMessages = net.messages.updated((myId,myId), net.messages.getOrElse((myId,myId), Nil()) :+ WriteWaiting(s,i,idM,hs))
-//             (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
-//             WriteHistory(newMessages, net.states)  &&
-//             tableHistory(net.param, net.states) &&
-//             networkInvariant(net.param, net.states, newMessages, net.getActor)
-//           }
-//         }
-//         else true
+        systemActorReceivePreCase2(receiver, sender, m)
+        
+      case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) => 
+        systemActorReceivePreCase3(receiver, sender, m)
 
       case (id,Read(s,idM), CommonState(mem,h)) =>
-        if (id == a4 && (idM._1 == false) && (idM._2 == s)) {
-          val newMessages = net.messages.updated((myId,a4), net.messages.getOrElse((myId,a4), Nil()) :+ Value(mem.getOrElse(s,0),(idM._1, idM._2, mem.getOrElse(s,0)),h))
-          ajoutCheckWriteForAll(channels, net.messages, userHistory, Value(mem.getOrElse(s,0), (idM._1, idM._2, mem.getOrElse(s,0)), h), myId, id) &&
-          WriteHistory(newMessages, net.states)  &&
-          tableHistory(net.param, net.states) &&
-          networkInvariant(net.param, net.states, newMessages, net.getActor)
-        }
-        else true
+        systemActorReceivePreCase4(receiver, sender, m)
 
       case _ => true
       }
@@ -575,7 +713,10 @@ object ProtocolProof {
               addUserCheckTableOne(xs, state, userHistory, t) &&
               tableHistoryOne(variables, state, Cons(t, userHistory))
             }
-            else true
+            else {
+              addUserCheckTableOne(xs, state, userHistory, t) &&
+              tableHistoryOne(variables, state, Cons(t, userHistory))
+            }
           case _ => false
         }
     }
