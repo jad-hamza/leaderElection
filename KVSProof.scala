@@ -185,7 +185,7 @@ object ProtocolProof {
     (sender, m, receiver.state) match {
       case (id, WriteUser(s,i,idM), CommonState(mem,h)) => 
         if (idM == (true, s, i)) {
-          val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set(idM)))
+          val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s, i))))
           val Variables(variables) = net.param
           val newMessages = net.messages.updated((myId,a1), net.messages.getOrElse((myId,a1), Nil()) :+ WriteSystem(s,i,idM,h))
           val newMessages2 = newMessages.updated((myId,a2), newMessages.getOrElse((myId,a2),Nil()) :+ WriteSystem(s,i,idM,h))
@@ -199,7 +199,9 @@ object ProtocolProof {
           (ajoutCheckWriteForAll(channels, newMessages3, userHistory, AckUser(idM,h), myId, a4)) &&
           WriteHistory(newMessages, net.states)  &&
           newUserHistory.contains((true, s, i), Set()) &&
-          networkInvariant(net.param, net.states, newMessages4, net.getActor) &&
+          updateCheckTable(net.param, net.states, s, i, id) &&
+          tableHistory(net.param, net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s,i))))) &&
+          //networkInvariant(net.param, newStates, newMessages4, net.getActor) &&
           true
         }
         else true
@@ -534,7 +536,9 @@ object ProtocolProof {
               userHistory.contains((true, x, mem.getOrElse(x,0)), Set()) &&
               tableHistoryOne(xs, state, userHistory)
             }
-            else true
+            else {
+              tableHistoryOne(xs, state, userHistory)
+            }
         }
       case _ => false
     }
@@ -589,25 +593,12 @@ object ProtocolProof {
       h.contains((true, x, v), Set())
       }
     }
-    tableHistory(param, states) && states.contains(a1) && {
     val UserState(userHistory, c) = states(a4)
     val Variables(variables) = param
-    if (id == a1) {
-      val CommonState(mem, h) = states(id)
-      val newStates = states.updated(id, CommonState(mem.updated(x,v),h++Set((true, x, v))))
-      (newStates(a2) == states(a2)) &&
-      (newStates(a3) == states(a3)) &&
-      (newStates(a4) == states(a4)) &&
-      tableHistoryOne(variables, newStates(a2), userHistory) &&
-      tableHistoryOne(variables, newStates(a3), userHistory) &&
-      userHistory.contains((true, x, v), Set()) &&
-      updateCheckTableOne(variables, states(a1), userHistory, x, v) &&
-      tableHistoryOne(variables, newStates(a1), userHistory)&&
-      //tableHistory(param, newStates)
-      true
-    }
-    else true
-  }
+    val CommonState(mem, h) = states(id)
+    val newStates = states.updated(id, CommonState(mem.updated(x,v),h++Set((true, x, v))))
+    updateCheckTableOne(variables, states(a1), userHistory, x, v) &&
+    tableHistory(param, newStates)
   }holds
 
   
@@ -622,23 +613,25 @@ object ProtocolProof {
     variables match {
       case Nil() => true
       case Cons(x,xs) => 
-        state match {
-          case CommonState(mem,h) => 
-            if (mem.getOrElse(x,0) != 0) {
-              if (x==s) {
-                mem.updated(s,i).getOrElse(x,0) == i &&
-                userHistory.contains((true, x, mem.updated(s,i).getOrElse(x,0)), Set()) &&
-                updateCheckTableOne(xs, state, userHistory, s, i) 
-              }
-              else {
-                mem.updated(s,i).getOrElse(x,0) == mem.getOrElse(x,0) &&
-                userHistory.contains((true, x, mem.updated(s,i).getOrElse(x,0)), Set()) &&
-                updateCheckTableOne(xs, state, userHistory, s, i)
-              }
+        val CommonState(mem,h) = state
+        if (mem.getOrElse(x,0) != 0) {
+           if (x==s) {
+              mem.updated(s,i).getOrElse(x,0) == i &&
+              userHistory.contains((true, x, mem.updated(s,i).getOrElse(x,0)), Set()) &&
+              updateCheckTableOne(xs, state, userHistory, s, i) &&
+              tableHistoryOne(variables, CommonState(mem.updated(s,i), h++Set((true, s, i))), userHistory)
             }
-            else true
-          case _ => false
-        }
+            else {
+              mem.updated(s,i).getOrElse(x,0) == mem.getOrElse(x,0) &&
+              userHistory.contains((true, x, mem.updated(s,i).getOrElse(x,0)), Set()) &&
+              updateCheckTableOne(xs, state, userHistory, s, i) &&
+              tableHistoryOne(variables, CommonState(mem.updated(s,i), h++Set((true, s, i))), userHistory)
+            }
+          }
+      else {
+        updateCheckTableOne(xs, state, userHistory, s, i) &&
+        tableHistoryOne(variables, CommonState(mem.updated(s,i), h++Set((true, s, i))), userHistory)
+      }
     }
   }holds
   

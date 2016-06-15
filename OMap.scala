@@ -12,7 +12,7 @@ case class MMap[A,B](m: Map[A, B]) {
   
   def updated(k: A, v: B) = {
     MMap(m.updated(k, v))
-  }
+  } 
   
   def getOrElse(k: A, v: B) = {
     m.getOrElse(k, v)
