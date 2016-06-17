@@ -52,11 +52,11 @@ object Protocol {
   val actor3 = SystemActor(a3, List(a1,a2))
   val actor4 = UserActor(a4)
     
-    def checkHistory(receiverHistory: Set[(Boolean, Variable, BigInt)], messageHistory: Set[(Boolean, Variable, BigInt)])(implicit net: VerifiedNetwork):Boolean = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor))
-     messageHistory.subsetOf(receiverHistory)
-    }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
-    
+  def checkHistory(receiverHistory: Set[(Boolean, Variable, BigInt)], messageHistory: Set[(Boolean, Variable, BigInt)])(implicit net: VerifiedNetwork):Boolean = {
+    require(networkInvariant(net.param, net.states, net.messages, net.getActor))
+    messageHistory.subsetOf(receiverHistory)
+  }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
+  
   case class SystemActor(myId: ActorId, otherActor: List[ActorId]) extends Actor {
 
     def init()(implicit net: VerifiedNetwork) = {
@@ -68,10 +68,10 @@ object Protocol {
       otherActor match {
         case Nil() => 
           val WriteSystem(s,i,idM,h) = m
-          !! (a4, AckUser(idM, h))
+          //!! (a4, AckUser(idM, h))
         case Cons(x, xs) => 
-          !! (x, m)
-          broadcastAck(xs, m)
+          //!! (x, m)
+          //broadcastAck(xs, m)
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
     

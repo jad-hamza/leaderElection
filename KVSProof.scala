@@ -194,10 +194,10 @@ object ProtocolProof {
     val SystemActor(_, otherActor) = receiver
     val myId = receiver.myId
     val UserState(userHistory,c) = states(a4)
+    val WriteSystem(s,i,idM,h) = m
     
     otherActor match {
       case Nil() => 
-        val WriteSystem(s,i,idM,h) = m
         val newMessages = messages.updated((myId,a4), messages.getOrElse((myId,a4), Nil()) :+ AckUser(idM,h))
         (ajoutCheckWriteForAll(channels, messages, userHistory, AckUser(idM,h), myId, a4)) &&
         WriteHistory(newMessages, states)  &&
@@ -207,8 +207,8 @@ object ProtocolProof {
         val newMessages = messages.updated((myId,x), messages.getOrElse((myId,x), Nil()) :+ m)
         (ajoutCheckWriteForAll(channels, messages, userHistory, m, myId, x)) &&
         WriteHistory(newMessages, states)  &&
+        broadcastAckPre(receiver, xs, m, param, states, newMessages, getActor)
         networkInvariant(param, states, newMessages, getActor)
-        broadcastAckPre(receiver, xs, m, param, states, messages, getActor)
     }
     }    
   }
