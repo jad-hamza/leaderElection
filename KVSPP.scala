@@ -88,9 +88,9 @@ object PrettyPrinting {
   
   def messageToString(m: Message) = {
     m match  {
-      case Value(x, idM, h) => "Value(" + x + ")"
-      case Read(s, idM) => "Read(" + variableToString(s) + ")"
-      case WriteUser(s, i, idM) => "WriteUser(" + variableToString(s) + ", " + i + ", id(" + idMessageToSring(idM) + "))"
+      case Value(x, idM, h) => "Value(" + x + ", " + variableToString(idM._2) + ")"
+      case Read(s) => "Read(" + variableToString(s) + ")"
+      case WriteUser(s, i) => "WriteUser(" + variableToString(s) + ", " + i + ")"
       case WriteSystem(s, i,idM, h) => "WriteSystem(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
       case WriteWaiting(s,i,idM, h) => "WriteWaiting(" + variableToString(s) + ", " + i + ", " + "id(" + idMessageToSring(idM) + "), " + historyToString(h) + ")"
       case AckUser(idM, h) => "AckUser(" + idMessageToSring(idM) + ", "+ historyToString(h) + ")"
@@ -126,7 +126,7 @@ object PrettyPrinting {
   
   def actorToString(a: Actor) = {
     a match {
-      case SystemActor(id) => "SystemActor(" + actorIdToString(id) + ")"
+      case SystemActor(id, l) => "SystemActor(" + actorIdToString(id) + ")"
       case UserActor(id) => "UserActor(" + actorIdToString(id) + ")"
     }
   }
