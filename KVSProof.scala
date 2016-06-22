@@ -30,19 +30,23 @@ object ProtocolProof {
   }holds
  
  
-  def makeInitMem(l: List[Variable]): List[(Variable,BigInt)] = {
-    require(!l.isEmpty)
-    l match {
-      case Cons(x,Nil()) => List((x,0))
-      case Cons(x,xs) => Cons((x,0),makeInitMem(xs))
-    }
-  }
+//   def makeInitMem(l: List[Variable]): List[(Variable,BigInt)] = {
+//     require(!l.isEmpty)
+//     l match {
+//       case Cons(x,Nil()) => List((x,0))
+//       case Cons(x,xs) => Cons((x,0),makeInitMem(xs))
+//     }
+//   }
+//   
+//   val init_mem = makeInitMem(correct_variables)
+
+  val init_mem = MMap[Variable, BigInt](
+    Map[Variable, BigInt]()
+  )
   
-  val init_mem = makeInitMem(correct_variables)
+  val init_param = Variables(correct_variables)
   
-   val init_param = Variables(correct_variables)
-  
-  
+  /*
   val init_messages_list = List[((ActorId,ActorId),List[Message])](
     ((a1,a1),(Nil():List[Message])),
     ((a1,a2),(Nil():List[Message])),
@@ -63,24 +67,64 @@ object ProtocolProof {
     )
   val init_messages1 = MMap.makeMap[(ActorId,ActorId),List[Message]](init_messages_list)
   val init_messages = init_messages1.updated((a4,a4), Nil())
-
-  val init_states_list = List[(ActorId, State)](
-    (a1,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
-    (a2,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
-    (a3,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
-    (a4,UserState(Nil(),0))
-    )
-  val init_states = MMap.makeMap[ActorId,State](init_states_list)
-
+  */
   
-  val init_getActor_list = List[(ActorId,Actor)](
-    (a1,SystemActor(a1, List(a2,a3))),
-    (a2,SystemActor(a2, List(a1,a3))),
-    (a3,SystemActor(a3, List(a1,a2))),
-    (a4,UserActor(a4))
+  
+//   val init_states_list = List[(ActorId, State)](
+//     (a1,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
+//     (a2,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
+//     (a3,CommonState(MMap.makeMap[Variable,BigInt](init_mem), Set())),
+//     (a4,UserState(Nil(),0))
+//     )
+//   val init_states = MMap.makeMap[ActorId,State](init_states_list)
+  
+  val init_states = MMap[ActorId, State](
+    Map[ActorId, State](
+      (a1,CommonState(init_mem, Set())),
+      (a2,CommonState(init_mem, Set())),
+      (a3,CommonState(init_mem, Set())),
+      (a4,UserState(Nil(),0))
     )
-  val init_getActor = MMap.makeMap[ActorId,Actor](init_getActor_list)
-    
+  )
+  
+//   val init_getActor_list = List[(ActorId,Actor)](
+//     (a1,SystemActor(a1, List(a2,a3))),
+//     (a2,SystemActor(a2, List(a1,a3))),
+//     (a3,SystemActor(a3, List(a1,a2))),
+//     (a4,UserActor(a4))
+//     )
+//   val init_getActor = MMap.makeMap[ActorId,Actor](init_getActor_list)
+
+  val init_getActor = MMap[ActorId, Actor](
+    Map[ActorId, Actor](
+      (a1,SystemActor(a1, List(a2,a3))),
+      (a2,SystemActor(a2, List(a1,a3))),
+      (a3,SystemActor(a3, List(a1,a2))),
+      (a4,UserActor(a4))
+    )
+  )
+  
+  val init_messages = MMap[(ActorId, ActorId), List[Message]](
+    Map[(ActorId, ActorId), List[Message]](
+      ((a1,a1),(Nil():List[Message])),
+      ((a1,a2),(Nil():List[Message])),
+      ((a1,a3),(Nil():List[Message])),
+      ((a1,a4),(Nil():List[Message])),
+      ((a2,a1),(Nil():List[Message])),
+      ((a2,a2),(Nil():List[Message])),
+      ((a2,a3),(Nil():List[Message])),
+      ((a2,a4),(Nil():List[Message])),
+      ((a3,a1),(Nil():List[Message])),
+      ((a3,a2),(Nil():List[Message])),
+      ((a3,a3),(Nil():List[Message])),
+      ((a3,a4),(Nil():List[Message])),
+      ((a4,a1),(Nil():List[Message])),
+      ((a4,a2),(Nil():List[Message])),
+      ((a4,a3),(Nil():List[Message])),
+      ((a4,a4),(Nil():List[Message]))
+    )
+  )
+  
   def checkContent[A,B](l: List[(A,B)], m: MMap[A,B]): Boolean  = {
     l match {
       case Nil() => true
@@ -98,12 +142,13 @@ object ProtocolProof {
   }ensuring(res => 
     writeEmpty(res.states) && 
     WriteHistory(res.messages, res.states) && 
-    checkContent(init_states_list, init_states) && 
-    checkContent(init_getActor_list, init_getActor) &&
+    //checkContent(init_states_list, init_states) && 
+    //checkContent(init_getActor_list, init_getActor) &&
     res.getActor(a1) == SystemActor(a1, List(a2,a3)) &&
     res.getActor(a2) == SystemActor(a2, List(a1,a3)) &&
     res.getActor(a3) == SystemActor(a3, List(a1,a2)) &&
     res.getActor(a4) == UserActor(a4) && 
+    messagesEmpty(channels) &&
     networkInvariant(res.param,res.states, res.messages, res.getActor) &&
     true
   )
@@ -131,6 +176,7 @@ object ProtocolProof {
     getActor(a4) == UserActor(a4) && 
     WriteHistory(messages, states)  &&
     tableHistory(param, states) &&
+    not2WriteUser(channels, messages)&&
     true
   }
   
@@ -167,31 +213,49 @@ object ProtocolProof {
      true
   }
   
-  def broadcastAckPre(receiver: Actor, otherActor: List[ActorId], m: Message, param: Parameter, states: MMap[ActorId, State], messages: MMap[(ActorId, ActorId), List[Message]], getActor: MMap[ActorId, Actor]): Boolean = {
+  def addMessage(otherActor: List[ActorId], messages:MMap[(ActorId, ActorId), List[Message]], m: Message, id: ActorId):MMap[(ActorId, ActorId), List[Message]] = {
+    require{
+      m match {
+        case WriteSystem(s,i,idM,h) => true
+        case _ => false
+      }
+    }
+    val WriteSystem(s,i,idM,h) = m
+    otherActor match {
+      case Nil() =>
+        messages.updated((id,a4), messages.getOrElse((id,a4), Nil()) :+ AckUser(idM,h))
+      case Cons(x,xs) => 
+        val newMessages = messages.updated((id,x), messages.getOrElse((id,x), Nil()) :+ m)
+        addMessage(xs, newMessages, m, id)
+    }
+  }
+  
+  
+  def broadcastAckPre(receiver: Actor, 
+  otherActor: List[ActorId], 
+  m: Message, 
+  param: Parameter, 
+  states: MMap[ActorId, State], 
+  messages: MMap[(ActorId, ActorId), List[Message]], 
+  getActor: MMap[ActorId, Actor]
+  ): Boolean = {
+    //require{
+    (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
+     networkInvariant(param, states, messages, getActor) && 
     {
     receiver match {
       case SystemActor(_,_) => true
       case _ => false
     }
-    } &&    
-    (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
-    networkInvariant(param, states, messages, getActor) && 
+    } && 
     {
     val UserState(userHistory,c) = states(a4)
     m match {
-      case WriteUser(x,v) => userHistory.contains(((true, x, v),Set()))
       case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
-      case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
-      case _ => true
-    }
-    } && 
-    {
-    m match{
-      case WriteSystem(s,i, idM, h) => true
       case _ => false
     }
-    } && {
-    val SystemActor(_, otherActor) = receiver
+    } &&
+   {
     val myId = receiver.myId
     val UserState(userHistory,c) = states(a4)
     val WriteSystem(s,i,idM,h) = m
@@ -199,18 +263,22 @@ object ProtocolProof {
     otherActor match {
       case Nil() => 
         val newMessages = messages.updated((myId,a4), messages.getOrElse((myId,a4), Nil()) :+ AckUser(idM,h))
+        addNot2WriteUser(channels, messages, myId, a4, AckUser(idM,h)) &&
         (ajoutCheckWriteForAll(channels, messages, userHistory, AckUser(idM,h), myId, a4)) &&
         WriteHistory(newMessages, states)  &&
-        networkInvariant(param, states, newMessages, getActor)
+        networkInvariant(param, states, newMessages, getActor) &&
+        networkInvariant(param, states, addMessage(otherActor, messages, m, myId), getActor) &&
+        true
         
       case Cons(x, xs) => 
         val newMessages = messages.updated((myId,x), messages.getOrElse((myId,x), Nil()) :+ m)
+        addNot2WriteUser(channels, messages, myId, x, m) &&
         (ajoutCheckWriteForAll(channels, messages, userHistory, m, myId, x)) &&
         WriteHistory(newMessages, states)  &&
-        broadcastAckPre(receiver, xs, m, param, states, newMessages, getActor)
-        networkInvariant(param, states, newMessages, getActor)
+        networkInvariant(param, states, newMessages, getActor) &&
+        true
     }
-    }    
+    }
   }
   
   def systemActorReceivePreCase1(
@@ -229,47 +297,27 @@ object ProtocolProof {
       networkInvariant(net.param, net.states, net.messages, net.getActor) && 
       {
       val UserState(userHistory,c) = net.states(a4)
-      m match {
-        case WriteUser(x,v) => userHistory.contains(((true, x, v),Set()))
-        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
-        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
-        case _ => true
-      }
-      } && 
-      {
       (sender, m, receiver.state) match{
-        case (id, WriteUser(s,i), CommonState(mem,h)) => true
+        case (id, WriteUser(s,i), CommonState(mem,h)) => 
+          userHistory.contains(((true, s, i),Set()))
         case _ => false
       }
       }
     }
   
-    val UserState(userHistory,c) = net.states(a4)
-    val SystemActor(myId, otherActor) = receiver
-    val id = sender
+    //val UserState(userHistory,c) = net.states(a4)
+    val myId = receiver.myId
     val WriteUser(s,i) = m
     val CommonState(mem,h) = receiver.state
     val idM = (true, s, i)
     
     val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s, i))))
     val Variables(variables) = net.param
-//     val newMessages = net.messages.updated((myId,a1), net.messages.getOrElse((myId,a1), Nil()) :+ WriteSystem(s,i,idM,h))
-//     val newMessages2 = newMessages.updated((myId,a2), newMessages.getOrElse((myId,a2),Nil()) :+ WriteSystem(s,i,idM,h))
-//     val newMessages3 = newMessages2.updated((myId,a3), newMessages2.getOrElse((myId,a3), Nil()) :+ WriteSystem(s,i,idM,h))
-//     val newMessages4 = newMessages3.updated((myId,a4), newMessages3.getOrElse((myId,a4),Nil()) :+ AckUser(idM,h))
-     val UserState(newUserHistory,newc) = newStates(a4)
-//     (userHistory == newUserHistory) &&
-//     (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteSystem(s,i,idM,h), myId, a1)) &&
-//     (ajoutCheckWriteForAll(channels, newMessages, userHistory, WriteSystem(s,i,idM,h), myId, a2)) &&
-//     (ajoutCheckWriteForAll(channels, newMessages2, userHistory, WriteSystem(s,i,idM,h), myId, a3)) &&
-//     (ajoutCheckWriteForAll(channels, newMessages3, userHistory, AckUser(idM,h), myId, a4)) &&
-//     WriteHistory(newMessages, net.states)  &&
-    //networkInvariant(net.param, net.states, newMessages4, net.getActor) &&
+    val UserState(newUserHistory,newc) = newStates(a4)
     newUserHistory.contains((true, s, i), Set()) &&
     updateCheckTable(net.param, net.states, s, i, myId) &&
     tableHistory(net.param, newStates) &&
     networkInvariant(net.param, newStates, net.messages, net.getActor) &&
-    broadcastAckPre(receiver, otherActor, WriteSystem(s,i,idM,h), net.param, newStates, net.messages, net.getActor) &&
     true
   }holds
   
@@ -320,6 +368,7 @@ object ProtocolProof {
         (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
         WriteHistory(newMessages, net.states)  &&
         tableHistory(net.param, net.states) &&
+        addNot2WriteUser(channels, net.messages, myId, myId, WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -375,6 +424,7 @@ object ProtocolProof {
         (ajoutCheckWriteForAll(channels, net.messages, userHistory, WriteWaiting(s,i,idM,hs), myId, myId)) &&
         WriteHistory(newMessages, net.states)  &&
         tableHistory(net.param, net.states) &&
+        addNot2WriteUser(channels, net.messages, myId, myId, WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -421,6 +471,7 @@ object ProtocolProof {
       tableHistory(net.param, net.states) &&
       tableToValue(s, variables, receiver.state, userHistory) &&
       ajoutCheckWriteForAll(channels, net.messages, userHistory, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h), myId, id) &&
+      addNot2WriteUser(channels, net.messages, myId, id, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       WriteHistory(newMessages, net.states)  &&
       networkInvariant(net.param, net.states, newMessages, net.getActor)
     }
@@ -492,12 +543,15 @@ object ProtocolProof {
           n.states(a4) match {
             case UserState(h,counter) =>
               removeCheckWriteForAll(channels, n.messages, h, sender, receiver) &&
+              removeNot2WriteUser(n.messages, sender, receiver, channels) &&
               inChannels(n, sender,receiver)&&
               inUserHistory(sender, receiver, n.messages, channels, h)&&
-              checkWrite(sms, h)
-              networkInvariant(n.param, n.states, messages2, n.getActor)
+              checkWrite(sms, h) &&
+              networkInvariant(n.param, n.states, messages2, n.getActor) &&
               true
-            case _ => networkInvariant(n.param, n.states, messages2, n.getActor)
+            case _ => 
+              removeNot2WriteUser(n.messages, sender, receiver, channels) &&
+              networkInvariant(n.param, n.states, messages2, n.getActor)
           }
  
       case _ => 
@@ -505,9 +559,12 @@ object ProtocolProof {
     }
   } holds
 
-  def initPre(myId: ActorId, net: VerifiedNetwork) = {
-    myId == a4 &&
-    networkInvariant(net.param, net.states, net.messages, net.getActor) && {
+  def initPre(myId: ActorId, net: VerifiedNetwork): Boolean = {
+    //require(
+    myId == a4 && 
+    networkInvariant(net.param, net.states, net.messages, net.getActor) &&
+    net.messages == init_messages && 
+    {
     val UserState(h,c) = net.states(myId)
     val newHistory: List[((Boolean, Variable, BigInt),Set[(Boolean, Variable, BigInt)])] = Cons(((true, Variable(1),1),Set()), h)
     val newStates = net.states.updated(a4,UserState(newHistory,c+1))
@@ -516,7 +573,9 @@ object ProtocolProof {
     
     ajoutUserCheckWriteForAll(channels, net.messages, h, ((true, Variable(1),1),Set())) &&
     networkInvariant(net.param, newStates, net.messages, net.getActor) &&
-    ajoutCheckWriteForAll(channels, net.messages, newHistory, WriteUser(Variable(1), 1), a4, a1) &&  
+    ajoutCheckWriteForAll(channels, net.messages, newHistory, WriteUser(Variable(1), 1), a4, a1) && 
+    addInitNot2WriteUser(channels, net.messages, a4,a1, WriteUser(Variable(1), 1)) &&
+    not2WriteUser(channels, newMessages) &&
     networkInvariant(net.param, newStates, newMessages, net.getActor) &&
     true
     }
@@ -888,4 +947,221 @@ object ProtocolProof {
   }holds
   
   
+  def not2WriteUser(
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil())) &&
+        not2WriteUser(xs, messages)
+    }
+  }
+  
+  def not2WriteUserOne(
+    id1: ActorId,
+    id2: ActorId,
+    messages: List[Message]
+  ): Boolean = {
+    messages match {
+      case Nil() => true 
+      case Cons(x,xs) => 
+        x match {
+          case WriteUser(s,i) =>
+            (!xs.contains(x)) &&
+            not2WriteUserOne(id1,id2,xs)
+          case _ => 
+            not2WriteUserOne(id1,id2,xs)
+        }
+    }
+  }
+  
+  def messagesEmpty(channels: List[(ActorId, ActorId)]): Boolean = {
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        init_messages.getOrElse(x, Nil()).isEmpty &&
+        not2WriteUserOne(x._1, x._2, init_messages.getOrElse(x, Nil())) &&
+        messagesEmpty(xs) &&
+        not2WriteUser(channels, init_messages)
+    }
+  }holds
+  
+  def removeNot2WriteUser(
+    messages: MMap[(ActorId, ActorId), List[Message]], 
+    id1: ActorId, 
+    id2: ActorId, 
+    channels: List[(ActorId, ActorId)]
+  ): Boolean = {
+    require(
+      not2WriteUser(channels, messages) &&
+      {
+        messages.getOrElse((id1,id2), Nil()) match {
+          case Nil() => false
+          case _ => true
+        }
+      }
+    )
+    val Cons(_,xs) = messages.getOrElse((id1,id2), Nil())
+    val newMessages = messages.updated((id1,id2), xs)
+    channels match {
+      case Nil() => not2WriteUser(channels, newMessages)
+      case Cons(x,xs) if(x == (id1,id2)) => 
+        not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil())) &&
+        not2WriteUserOne(x._1, x._2, newMessages.getOrElse(x, Nil())) &&
+        removeNot2WriteUser(messages, id1,id2, xs) &&
+        not2WriteUser(channels, newMessages)
+      case Cons(x,xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        not2WriteUserOne(x._1, x._2, newMessages.getOrElse(x, Nil())) &&
+        removeNot2WriteUser(messages, id1,id2, xs) &&
+        not2WriteUser(channels, newMessages)
+    }    
+  }holds
+  
+  def addNot2WriteUser(
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    id1: ActorId,
+    id2: ActorId, 
+    m: Message
+  ): Boolean = {
+  require(
+    not2WriteUser(channels, messages) &&
+    {
+      m match {
+        case WriteUser(s,i) => false
+        case _ => true
+      }
+    }
+  )
+    val newMessages = messages.updated((id1,id2), messages.getOrElse((id1,id2), Nil()) :+ m)
+    channels match {
+      case Nil() => not2WriteUser(channels, newMessages)
+      case Cons(x,xs) if (x == (id1,id2)) => 
+        addNot2WriteUserOne(messages.getOrElse((id1,id2), Nil()), id1, id2, m) &&
+        addNot2WriteUser(xs, messages, id1, id2, m) &&
+        not2WriteUser(channels, newMessages)
+      case Cons(x,xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        not2WriteUserOne(x._1, x._2, newMessages.getOrElse(x, Nil())) &&
+        addNot2WriteUser(xs, messages, id1,id2, m) &&
+        not2WriteUser(channels, newMessages)
+    }
+  }holds
+  
+  def addNot2WriteUserOne(
+    messages: List[Message],
+    id1: ActorId,
+    id2: ActorId,
+    m: Message
+  ): Boolean = {
+    require(
+      not2WriteUserOne(id1,id2, messages) &&
+      {
+        m match {
+          case WriteUser(s,i) => false
+          case _ => true
+        }
+      })
+    messages match {
+      case Nil() => 
+        not2WriteUserOne(id1, id2, List(m))
+      case Cons(x,xs) => 
+        addNot2WriteUserOne(xs,id1,id2, m) &&
+        not2WriteUserOne(id1, id2, messages :+ m)
+    }
+  }holds
+  
+  
+  def initMessagesContents(
+    channels: List[(ActorId, ActorId)], 
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        initMessagesContentsOne(x, messages) &&
+//         initMessagesContents(xs, messages, messages1, messages2, messages3) &&
+//         not2WriteUser(channels, messages) &&
+        true
+    }
+  }
+  
+  def initMessagesContentsOne(
+    x: (ActorId, ActorId), 
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    if(x._1 != a4){
+      messages.getOrElse(x, Nil()).isEmpty &&
+      not2WriteUserOne(x._1, x._2, Nil())
+    }
+//     else if(x._2 == a1) {
+//       not2WriteUserOne(x._1, x._2, List(WriteUser(Variable(1), 1)))
+//     }
+//     else if(x._2 == a2) {
+//       messages.getOrElse(x, Nil()).isEmpty &&
+//       not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil()))
+//     }
+//     else if(x._2 == a3) {
+//       messages.getOrElse(x, Nil()).isEmpty &&
+//       not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil()))
+//     }
+    else {
+      true
+    }
+  }
+  
+
+  def addInitNot2WriteUserOne(
+    messages: List[Message],
+    m: Message, 
+    id1: ActorId, 
+    id2: ActorId
+  ): Boolean = {
+  require(
+    not2WriteUserOne(id1,id2, messages) &&
+    !messages.contains(m)
+  )
+    val newMessages = messages :+ m
+    messages match {
+      case Nil() =>
+        not2WriteUserOne(id1,id2, newMessages)
+      case Cons(x,xs) if (x == m) =>
+        false
+      case Cons(x,xs) => 
+        addInitNot2WriteUserOne(xs, m, id1, id2) &&
+        not2WriteUserOne(id1,id2, newMessages)
+    }    
+  }holds
+  
+  def addInitNot2WriteUser(
+    channels: List[(ActorId,ActorId)], 
+    messages: MMap[(ActorId,ActorId), List[Message]], 
+    id1: ActorId,
+    id2: ActorId,
+    m: Message
+  ): Boolean = {
+  require(
+    not2WriteUser(channels, messages) &&
+    !messages.getOrElse((id1,id2), Nil()).contains(m)
+  )
+    val newMessages = messages.updated((id1,id2), messages.getOrElse((id1,id2), Nil()) :+ m)
+    channels match {
+      case Nil() => 
+        not2WriteUser(channels, newMessages)
+      case Cons(x,xs) if (x == (id1,id2))=> 
+        addInitNot2WriteUserOne(messages.getOrElse((id1,id2), Nil()), m, id1, id2) &&
+        not2WriteUserOne(id1,id2, newMessages.getOrElse((id1,id2), Nil())) &&
+        addInitNot2WriteUser(xs, messages, id1, id2, m) &&
+        not2WriteUser(channels, newMessages)
+      case Cons(x,xs) => 
+        newMessages.getOrElse(x, Nil()) == messages.getOrElse(x, Nil()) && 
+        not2WriteUserOne(x._1,x._2, newMessages.getOrElse(x, Nil())) &&
+        addInitNot2WriteUser(xs, messages, id1, id2, m) &&
+        not2WriteUser(channels, newMessages)
+    }
+  }holds
 }
+

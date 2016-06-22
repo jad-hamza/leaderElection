@@ -66,30 +66,25 @@ object Protocol {
     def broadcastAck(otherActor: List[ActorId], m: Message)(implicit net: VerifiedNetwork): Unit = {
       require(broadcastAckPre(this, otherActor, m, net.param, net.states, net.messages, net.getActor))
       otherActor match {
-        case Nil() => 
+        case Nil() => ()
           val WriteSystem(s,i,idM,h) = m
-          //!! (a4, AckUser(idM, h))
+          !! (a4, AckUser(idM, h))
         case Cons(x, xs) => 
-          //!! (x, m)
-          //broadcastAck(xs, m)
+          !! (x, m)
+          broadcastAck(xs, m)
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
     
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
       require(receivePre(this, sender, m))
         
-        val Variables(variables) = net.param
+      val Variables(variables) = net.param
         
-//      printing("receive System")
       (sender, m, state) match {
         case (id, WriteUser(s,i), CommonState(mem,h)) =>
           val idM = (true, s, i)
           update(CommonState(mem.updated(s,i),h++Set(idM)));
           broadcastAck(otherActor, WriteSystem(s,i,idM,h))
-//           !! (a1, WriteSystem(s,i,idM,h))
-//           !! (a2, WriteSystem(s,i,idM,h))
-//           !! (a3, WriteSystem(s,i,idM,h))
-//           !! (a4, AckUser(idM,h))
             
         case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
 	        if (id != myId && (idM == (true, s, i))) {
