@@ -177,6 +177,7 @@ object ProtocolProof {
     WriteHistory(messages, states)  &&
     tableHistory(param, states) &&
     not2WriteUser(channels, messages)&&
+    uniqueWriteUser(channels, messages) &&
     true
   }
   
@@ -264,6 +265,7 @@ object ProtocolProof {
       case Nil() => 
         val newMessages = messages.updated((myId,a4), messages.getOrElse((myId,a4), Nil()) :+ AckUser(idM,h))
         addNot2WriteUser(channels, messages, myId, a4, AckUser(idM,h)) &&
+        addUniqueWriteUnser(channels, messages, AckUser(idM,h), (myId, a4)) &&
         (ajoutCheckWriteForAll(channels, messages, userHistory, AckUser(idM,h), myId, a4)) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
@@ -273,6 +275,7 @@ object ProtocolProof {
       case Cons(x, xs) => 
         val newMessages = messages.updated((myId,x), messages.getOrElse((myId,x), Nil()) :+ m)
         addNot2WriteUser(channels, messages, myId, x, m) &&
+        addUniqueWriteUnser(channels, messages, m, (myId, x)) &&
         (ajoutCheckWriteForAll(channels, messages, userHistory, m, myId, x)) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
@@ -369,6 +372,7 @@ object ProtocolProof {
         WriteHistory(newMessages, net.states)  &&
         tableHistory(net.param, net.states) &&
         addNot2WriteUser(channels, net.messages, myId, myId, WriteWaiting(s,i,idM,hs)) &&
+        addUniqueWriteUnser(channels, net.messages, WriteWaiting(s,i,idM,hs), (myId, myId)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -425,6 +429,7 @@ object ProtocolProof {
         WriteHistory(newMessages, net.states)  &&
         tableHistory(net.param, net.states) &&
         addNot2WriteUser(channels, net.messages, myId, myId, WriteWaiting(s,i,idM,hs)) &&
+        addUniqueWriteUnser(channels, net.messages, WriteWaiting(s,i,idM,hs), (myId, myId)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -473,6 +478,7 @@ object ProtocolProof {
       ajoutCheckWriteForAll(channels, net.messages, userHistory, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h), myId, id) &&
       addNot2WriteUser(channels, net.messages, myId, id, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       WriteHistory(newMessages, net.states)  &&
+      addUniqueWriteUnser(channels, net.messages, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h), (myId, id)) &&
       networkInvariant(net.param, net.states, newMessages, net.getActor)
     }
     else true
@@ -947,6 +953,7 @@ object ProtocolProof {
   }holds
   
   
+// property 1
   def not2WriteUser(
     channels: List[(ActorId, ActorId)],
     messages: MMap[(ActorId, ActorId), List[Message]]
@@ -1083,8 +1090,6 @@ object ProtocolProof {
       case Nil() => true
       case Cons(x,xs) => 
         initMessagesContentsOne(x, messages) &&
-//         initMessagesContents(xs, messages, messages1, messages2, messages3) &&
-//         not2WriteUser(channels, messages) &&
         true
     }
   }
@@ -1097,17 +1102,6 @@ object ProtocolProof {
       messages.getOrElse(x, Nil()).isEmpty &&
       not2WriteUserOne(x._1, x._2, Nil())
     }
-//     else if(x._2 == a1) {
-//       not2WriteUserOne(x._1, x._2, List(WriteUser(Variable(1), 1)))
-//     }
-//     else if(x._2 == a2) {
-//       messages.getOrElse(x, Nil()).isEmpty &&
-//       not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil()))
-//     }
-//     else if(x._2 == a3) {
-//       messages.getOrElse(x, Nil()).isEmpty &&
-//       not2WriteUserOne(x._1, x._2, messages.getOrElse(x, Nil()))
-//     }
     else {
       true
     }
@@ -1163,5 +1157,206 @@ object ProtocolProof {
         not2WriteUser(channels, newMessages)
     }
   }holds
+
+  
+  
+//property 2
+  def uniqueWriteUser(
+    channels: List[(ActorId, ActorId)], 
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        uniqueWriteUserOne(x, messages.getOrElse(x, Nil()), messages, channels) &&
+        uniqueWriteUser(xs, messages)
+    }
+  }
+
+  def uniqueWriteUserOne(
+    pair: (ActorId, ActorId),
+    channelMessages: List[Message], 
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    channels: List[(ActorId, ActorId)]
+  ): Boolean = {
+    channelMessages match {
+      case Nil() => true
+      case Cons(WriteUser(s,i), xs) =>
+        channelNotContains(WriteUser(s,i), pair, channels, messages) &&
+        uniqueWriteUserOne(pair, xs, messages, channels)
+      case Cons(x,xs) => 
+        uniqueWriteUserOne(pair, xs, messages, channels)
+    }
+  }
+  
+  def channelNotContains(
+    m: Message,
+    pair: (ActorId, ActorId),
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId, ActorId), List[Message]]   
+  ): Boolean = {
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x==pair) => 
+        channelNotContains(m,pair,xs,messages)
+      case Cons(x,xs) =>
+        !messages.getOrElse(x, Nil()).contains(m) &&
+        channelNotContains(m,pair,xs,messages)
+    }
+  }
+  
+  def addUniqueWriteUnser(
+    channels: List[(ActorId, ActorId)], 
+    messages: MMap[(ActorId, ActorId), List[Message]], 
+    m: Message,
+    pair: (ActorId, ActorId)
+  ): Boolean = {
+  require(
+    uniqueWriteUser(channels, messages) &&
+    {
+      m match {
+        case WriteUser(s,i) => false
+        case _ => true
+      }
+    }
+  )
+    val newMessages = messages.updated(pair, messages.getOrElse(pair, Nil()) :+ m)
+    channels match {
+      case Nil() => uniqueWriteUser(channels, newMessages)
+      case Cons(x,xs) if (x==pair) =>
+         addUniqueWriteUnserOne(pair, messages.getOrElse(pair, Nil()), messages, channels, m) &&
+         addUniqueWriteUnser(xs, messages, m, pair) &&
+         uniqueWriteUser(channels, newMessages)&&
+        true
+      case Cons(x,xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        addUniqueWriteUnserOneBis(x, pair, messages.getOrElse(x, Nil()), messages, channels, m) &&
+        uniqueWriteUserOne(x, newMessages.getOrElse(x, Nil()), newMessages, channels) &&
+        addUniqueWriteUnser(xs, messages, m, pair) &&
+        uniqueWriteUser(channels, newMessages) &&
+        true
+    }
+  }holds
+  
+  def addUniqueWriteUnserOne(
+    pair: (ActorId, ActorId),
+    channelMessages: List[Message],
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    channels: List[(ActorId, ActorId)], 
+    m: Message
+  ): Boolean = {
+    require(
+      uniqueWriteUserOne(pair, channelMessages, messages, channels) &&
+      {
+        m match {
+          case WriteUser(s,i) => false
+          case _ => true
+        }
+      } &&
+      true
+      )
+    val newMessages = messages.updated(pair, messages.getOrElse(pair, Nil()) :+ m)
+    channelMessages match {
+      case Nil() => 
+        uniqueWriteUserOne(pair, channelMessages :+ m, newMessages, channels) &&
+        true
+      case Cons(WriteUser(s,i),xs) => 
+        addChannelsNotContains(m, WriteUser(s,i), pair, channels, messages) &&
+        channelNotContains(WriteUser(s,i), pair, channels, newMessages) &&
+        addUniqueWriteUnserOne(pair, xs, messages, channels, m) &&
+        uniqueWriteUserOne(pair, channelMessages :+ m, newMessages, channels) &&
+        true
+      case Cons(x,xs) => 
+        addUniqueWriteUnserOne(pair, xs, messages, channels, m) &&
+        uniqueWriteUserOne(pair, channelMessages :+ m, newMessages, channels) &&
+        true
+    }
+  }holds
+
+  
+  def addUniqueWriteUnserOneBis(
+    pairChannel: (ActorId, ActorId),
+    pairAdd: (ActorId, ActorId),
+    channelMessages: List[Message],
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    channels: List[(ActorId, ActorId)], 
+    m: Message
+  ): Boolean = {
+    require(
+      uniqueWriteUserOne(pairChannel, channelMessages, messages, channels) &&
+      {
+        m match {
+          case WriteUser(s,i) => false
+          case _ => true
+        }
+      } &&
+      true
+      )
+    val newMessages = messages.updated(pairAdd, messages.getOrElse(pairAdd, Nil()) :+ m)
+    channelMessages match {
+      case Nil() => 
+        uniqueWriteUserOne(pairChannel, channelMessages, newMessages, channels) &&
+        true
+      case Cons(WriteUser(s,i),xs) => 
+        addChannelsNotContainsBis(m, WriteUser(s,i), pairAdd, pairChannel, channels, messages) &&
+        channelNotContains(WriteUser(s,i), pairChannel, channels, newMessages) &&
+        addUniqueWriteUnserOneBis(pairChannel, pairAdd, xs, messages, channels, m) &&
+        uniqueWriteUserOne(pairChannel, channelMessages, newMessages, channels) &&
+        true
+      case Cons(x,xs) => 
+        addUniqueWriteUnserOneBis(pairChannel, pairAdd, xs, messages, channels, m) &&
+        uniqueWriteUserOne(pairChannel, channelMessages, newMessages, channels) &&
+        true
+    }
+  }holds
+  
+  
+  def addChannelsNotContainsBis(
+    addM: Message,
+    m: Message,
+    pairAdd: (ActorId, ActorId),
+    pairChannel: (ActorId, ActorId),
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    require(channelNotContains(m, pairChannel, channels, messages) && addM != m)
+    val newMessages = messages.updated(pairAdd, messages.getOrElse(pairAdd, Nil()) :+ addM)
+    channels match {
+      case Nil() => channelNotContains(m,pairChannel,channels,newMessages)
+      case Cons(x,xs) if (x==pairChannel) => 
+        addChannelsNotContainsBis(addM,m,pairAdd, pairChannel, xs, messages) &&
+        channelNotContains(m,pairChannel,channels,newMessages)
+      case Cons(x,xs) =>
+        addChannelsNotContainsBis(addM, m, pairAdd, pairChannel, xs, messages) &&
+        channelNotContains(m,pairChannel,channels,newMessages)
+    }
+  }holds
+  
+  
+  
+  
+  
+  
+  def addChannelsNotContains(
+    addM: Message,
+    m: Message,
+    pair: (ActorId, ActorId),
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId, ActorId), List[Message]]
+  ): Boolean = {
+    require(channelNotContains(m, pair, channels, messages))
+    val newMessages = messages.updated(pair, messages.getOrElse(pair, Nil()) :+ addM)
+    channels match {
+      case Nil() => channelNotContains(m,pair,channels,newMessages)
+      case Cons(x,xs) if (x==pair) => 
+        addChannelsNotContains(addM,m,pair,xs,messages) &&
+        channelNotContains(m,pair,channels,newMessages)
+      case Cons(x,xs) =>
+        messages.getOrElse(x,Nil()) == newMessages.getOrElse(x,Nil()) &&
+        addChannelsNotContains(addM,m,pair,xs,messages) &&
+        channelNotContains(m,pair,channels,newMessages)
+    }
+  }holds
+  
 }
 
