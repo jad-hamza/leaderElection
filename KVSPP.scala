@@ -127,7 +127,7 @@ object PrettyPrinting {
   def actorToString(a: Actor) = {
     a match {
       case SystemActor(id, l) => "SystemActor(" + actorIdToString(id) + ")"
-      case UserActor(id) => "UserActor(" + actorIdToString(id) + ")"
+      case UserActor(id, l) => "UserActor(" + actorIdToString(id) + ")"
     }
   }
   
