@@ -20,6 +20,21 @@ object ProtocolProof {
   import Protocol._
   import PrettyPrinting._
   
+  def areWU(list: List[(ActorId,Message)]): Boolean = {
+    list match {
+      case Cons(x,xs) if (!isWU(x._2)) => false
+      case Cons(_,xs) => areWU(xs)
+      case Nil() => true
+    }
+  }
+  
+  def isWU(m: Message) = {
+    m match {
+      case WriteUser(s,i) => true 
+      case _ => false
+    }
+  }
+  
   def collectWUsInit(l: List[(ActorId,Message)]): Set[Message] = {
     l match {
       case Nil() => Set()
@@ -30,8 +45,8 @@ object ProtocolProof {
   
   def newContains(x:Message, list: List[(ActorId, Message)]): Boolean = {
     list match {
-      case Nil() => true
-      case Cons(h,t) if (h._2==x) => false
+      case Nil() => false
+      case Cons(h,t) if (h._2==x) => true
       case Cons(h,t) => newContains(x,t)
     }
   }
@@ -47,12 +62,18 @@ object ProtocolProof {
   }
   
   def removeDiff(list: List[(ActorId, Message)], messages: MMap[(ActorId,ActorId),List[Message]]): Boolean = {
-    require(differentInitMessage(list, messages))
+    require(differentInitMessage(list, messages) && areWU(list))
     
     list match {
       case Nil() => true
-      case Cons(x,xs) => 
+      case Cons(x,Nil())=> true
+      case Cons(x,xs@Cons(y,ys)) => 
         !newContains(x._2, xs) &&
+        !newContains(y._2, ys) &&
+        addCollectWU(messages, (a4,x._1), x._2, channels) &&
+        (x._2 != y._2) && 
+        !collectWUsList(add(messages, (a4,x._1), x._2), channels).contains(y._2) &&
+        removeDiff(Cons(x,ys), messages) &&
         differentInitMessage(xs, add(messages, (a4,x._1), x._2))
     }
   }holds
@@ -655,6 +676,7 @@ object ProtocolProof {
     net: VerifiedNetwork
   ): Boolean = {
     require(
+      areWU(initList) &&
       myId == a4 && 
       networkInvariant(net.param, net.states, net.messages, net.getActor) &&
       distinctElements[(ActorId,ActorId)](channels) &&
@@ -684,6 +706,7 @@ object ProtocolProof {
           uniqueWriteUser(newMessages, channels) &&
           networkInvariant(net.param, newStates, newMessages, net.getActor) &&
           collectWUsList(net.messages, channels) ++Set(WriteUser(s,i)) == collectWUsList(newMessages, channels) &&
+          removeDiff(initList, net.messages) &&
           differentInitMessage(xs, newMessages) &&
           true
         case _ => true
@@ -695,15 +718,12 @@ object ProtocolProof {
     initList: List[(ActorId,Message)], 
     net: VerifiedNetwork
   ): Boolean = {
-    //require(
+    areWU(initList) &&
     myId == a4 && 
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
     distinctElements[(ActorId,ActorId)](channels) &&
-    differentInitMessage(initList, net.messages) &&
-    {
-      initBisPreBis(myId, initList, net)
-    }
-  }//holds
+    differentInitMessage(initList, net.messages)
+  }
   
   def initPre(
     myId: ActorId, 
@@ -713,7 +733,8 @@ object ProtocolProof {
     myId == a4 && 
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
     distinctElements[(ActorId,ActorId)](channels) &&
-    net.messages == init_messages
+    net.messages == init_messages &&
+    areWU(initList)
   }
   
   def inUserHistory(
@@ -1406,6 +1427,7 @@ object ProtocolProof {
     }
   } holds
   
+  
   def addUniqueWriteUserWU(
     messages: MMap[(ActorId,ActorId),List[Message]], 
     channels: List[(ActorId,ActorId)],
@@ -1434,6 +1456,22 @@ object ProtocolProof {
     }
   } holds
   
+  def removeCollectWU(
+    messages: MMap[(ActorId,ActorId),List[Message]], 
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId,ActorId)
+  ): Boolean = {
+    require(!messages.getOrElse(c, Nil()).isEmpty)
+    val Cons(x,chan) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c,chan)
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        removeCollectWU(messages, xs, c) &&
+        (collectWUsList(newMessages, channels) subsetOf collectWUsList(messages, channels))
+    }
+  }
+  
   def removeWU(
     messages: MMap[(ActorId,ActorId),List[Message]], 
     channels: List[(ActorId,ActorId)],
@@ -1443,23 +1481,7 @@ object ProtocolProof {
       uniqueWriteUser(messages, channels) &&
       !messages.getOrElse(c,Nil()).isEmpty
     )
-    val Cons(h,l) = messages.getOrElse(c,Nil())
-    val newMessages = messages.updated(c, l)
-    channels match {
-      case Nil() => true
-      case Cons(x,xs) if (x==c) =>
-        collectWUs(newMessages.getOrElse(c,Nil())).subsetOf(collectWUs(newMessages.getOrElse(c,Nil()))) &&
-        collectWUsList(messages,xs)== collectWUsList(newMessages, xs) &&
-        //removeWU(messages, xs, c) &&
-        //uniqueWriteUser(newMessages, channels) &&
-        true
-      case Cons(x,xs) => 
-        //collectWUsList(newMessages,xs).subsetOf(collectWUsList(messages,xs)) &&
-        //collectWUs(newMessages.getOrElse(x,Nil())) == collectWUs(newMessages.getOrElse(x,Nil())) &&
-        //removeWU(messages, xs, c) &&
-        //uniqueWriteUser(newMessages, channels) &&
-        true
-    }
+    true
   }holds
   
   

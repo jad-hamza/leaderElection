@@ -125,18 +125,24 @@ object Protocol {
 
     def initBis(initList: List[(ActorId, Message)])(implicit net: VerifiedNetwork): Unit = {
       require(initBisPre(myId, initList, net))
-      val Variables(variables) = net.param
-      state match {
-        case UserState(l,counter) =>
-          initList match {
-            case Nil() => ()
-            case Cons((id, WriteUser(s,i)), xs) =>
-              !! (id,WriteUser(s, i))
-              update(UserState( Cons(((true, s, i),Set()), l), counter))
-              initBis(xs)
-            case _ => ()
-          }
-        case _ => ()
+      if (initBisPreBis(myId, initList, net)){
+        val Variables(variables) = net.param
+        state match {
+          case UserState(l,counter) =>
+            initList match {
+              case Nil() => ()
+              case Cons((id, WriteUser(s,i)), xs) if(validId(net, id)) =>()
+                !! (id,WriteUser(s, i))
+                update(UserState( Cons(((true, s, i),Set()), l), counter))
+                initBis(xs)
+              case _ => ()
+            }
+          case _ => ()
+        }
+      }
+      else {
+        check(false)
+        ()
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
   
