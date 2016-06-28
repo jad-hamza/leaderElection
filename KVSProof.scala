@@ -46,6 +46,54 @@ object ProtocolProof {
     }
   }
   
+  def removeDiff(list: List[(ActorId, Message)], messages: MMap[(ActorId,ActorId),List[Message]]): Boolean = {
+    require(differentInitMessage(list, messages))
+    
+    list match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        !newContains(x._2, xs) &&
+        differentInitMessage(xs, add(messages, (a4,x._1), x._2))
+    }
+  }holds
+  
+  def collectContains(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    c: (ActorId, ActorId), 
+    m: Message
+    ): Boolean = {
+      require(!collectWUsList(messages, channels).contains(m)&&
+      channels.contains(c) &&
+      {
+        m match {
+          case WriteUser(s,i) => true
+          case _ => false
+        }
+      })
+      !collectWUs(messages.getOrElse(c, Nil())).contains(m) &&
+      colLis(messages.getOrElse(c, Nil()), m) &&
+      !messages.getOrElse(c, Nil()).contains(m) &&
+      true
+   } holds
+    
+  def colLis(l: List[Message], m: Message): Boolean = {
+    require(
+      !collectWUs(l).contains(m) && {
+        m match {
+          case WriteUser(s,i) => true
+          case _ => false
+        }
+      }
+    )
+    
+    l match {
+      case Nil() => true
+      case Cons(x,xs) if (x==m) => collectWUs(l).contains(m)
+      case Cons(x,xs) => colLis(xs,m) && !l.contains(m)
+    }
+  }holds
+    
+  
   def distinctElements[A](list: List[A]): Boolean = {
     list match {
       case Nil() => true
@@ -601,26 +649,29 @@ object ProtocolProof {
     }
   } holds
   
-  def initBisPre(  
+  def initBisPreBis(
     myId: ActorId, 
     initList: List[(ActorId,Message)], 
     net: VerifiedNetwork
   ): Boolean = {
-    //require(
-    myId == a4 && 
-    networkInvariant(net.param, net.states, net.messages, net.getActor) &&
-    distinctElements[(ActorId,ActorId)](channels) &&
-    differentInitMessage(initList, net.messages) &&
-    {
-      initList match {
+    require(
+      myId == a4 && 
+      networkInvariant(net.param, net.states, net.messages, net.getActor) &&
+      distinctElements[(ActorId,ActorId)](channels) &&
+      differentInitMessage(initList, net.messages)
+    )
+    initList match {
         case Nil() => true
-        case Cons((id, WriteUser(s,i)),xs) => 
+        case Cons((id, WriteUser(s,i)),xs) if(validId(net,id)) => 
           val UserState(h,c) = net.states(myId)
           val newHistory: List[((Boolean, Variable, BigInt),Set[(Boolean,Variable, BigInt)])] = Cons(((true, s,i),Set()), h)
           val newStates = net.states.updated(a4,UserState(newHistory,c))
           val messages = net.messages.getOrElse((a4,id), Nil())
           val newMessages = net.messages.updated((a4,id),messages:+WriteUser(s,i))
     
+          inChannels(net, a4, id) &&
+          collectContains(net.messages, (a4,id), WriteUser(s,i)) &&
+          !net.messages.getOrElse((a4,id), Nil()).contains(WriteUser(s,i)) &&
           ajoutUserCheckWriteForAll(channels, net.messages, h, ((true, s,i),Set())) &&
           ajoutCheckWriteForAll(channels, net.messages, newHistory, WriteUser(s, i), a4, id) && 
           addInitNot2WriteUser(channels, net.messages, a4,id, WriteUser(s, i)) &&
@@ -637,6 +688,20 @@ object ProtocolProof {
           true
         case _ => true
       }
+    }holds
+  
+  def initBisPre(  
+    myId: ActorId, 
+    initList: List[(ActorId,Message)], 
+    net: VerifiedNetwork
+  ): Boolean = {
+    //require(
+    myId == a4 && 
+    networkInvariant(net.param, net.states, net.messages, net.getActor) &&
+    distinctElements[(ActorId,ActorId)](channels) &&
+    differentInitMessage(initList, net.messages) &&
+    {
+      initBisPreBis(myId, initList, net)
     }
   }//holds
   
