@@ -31,9 +31,19 @@ object Protocol {
   case class ActorIdUser(i: BigInt) extends ActorId
 
   // this protocol does not need a parameter
-  case class Variables(variables: List[Variable]) extends Parameter
-
-  val correct_variables = List(Variable(1))
+  case class Param(variables: List[Variable], initMessages: List[(ActorId,Message)]) extends Parameter
+  
+  def extractVariables(p: Parameter): List[Variable] = {
+    val Param(variables, initMessages) = p
+    variables
+  }
+  
+  def extractInitList(p: Parameter): List[(ActorId, Message)] = {
+    val Param(variables, initMessages) = p
+    initMessages
+  }
+  
+//   val correct_variables = List(Variable(1))
   
   val a1: ActorIdSys = ActorIdSys(1)
   val a2: ActorIdSys = ActorIdSys(2)
@@ -50,7 +60,7 @@ object Protocol {
   val actor1 = SystemActor(a1, List(a2,a3))
   val actor2 = SystemActor(a2, List(a1,a3))
   val actor3 = SystemActor(a3, List(a1,a2))
-  val actor4 = UserActor(a4, List((a1, WriteUser(Variable(1),1))))
+  val actor4 = UserActor(a4)
     
   def checkHistory(receiverHistory: Set[(Boolean, Variable, BigInt)], messageHistory: Set[(Boolean, Variable, BigInt)])(implicit net: VerifiedNetwork):Boolean = {
     require(networkInvariant(net.param, net.states, net.messages, net.getActor))
@@ -78,7 +88,7 @@ object Protocol {
     def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
       require(receivePre(this, sender, m))
         
-      val Variables(variables) = net.param
+      val variables = extractVariables(net.param)
         
       (sender, m, state) match {
         case (id, WriteUser(s,i), CommonState(mem,h)) =>
@@ -108,7 +118,7 @@ object Protocol {
 
         case (id,Read(s), CommonState(mem,h)) =>
           if (id == a4 && {
-          val Variables(variables) = net.param
+          val variables = extractVariables(net.param)
           variables.contains(s)
           }) {
               !! (id, Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h))
@@ -121,12 +131,13 @@ object Protocol {
 
   }
 
-  case class UserActor(myId: ActorId, initList: List[(ActorId, Message)]) extends Actor {
+  case class UserActor(myId: ActorId) extends Actor {
 
     def initBis(initList: List[(ActorId, Message)])(implicit net: VerifiedNetwork): Unit = {
       require(initBisPre(myId, initList, net))
+      
       if (initBisPreBis(myId, initList, net)){
-        val Variables(variables) = net.param
+        val variables = extractVariables(net.param)
         state match {
           case UserState(l,counter) =>
             initList match {
@@ -147,7 +158,11 @@ object Protocol {
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
   
     def init()(implicit net: VerifiedNetwork) = {
-      require(initPre(myId, initList, net))
+      require{
+        val initList = extractInitList(net.param)
+        initPre(myId, initList, net)
+      }
+      val initList = extractInitList(net.param)
       initBis(initList)
     } ensuring{networkInvariant(net.param, net.states, net.messages, net.getActor)}
 

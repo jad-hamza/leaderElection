@@ -124,6 +124,15 @@ object ProtocolProof {
     }
   }
   
+  def distinctElementsInit(list: List[(ActorId, Message)]): Boolean = {
+    list match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        !newContains(x._2,xs) &&
+        distinctElementsInit(xs)
+    }
+  }
+  
   def validId(net: VerifiedNetwork, id: ActorId) = {
     id == a1 || id == a2 || id == a3 || id == a4
   }
@@ -148,7 +157,7 @@ object ProtocolProof {
     Map[Variable, BigInt]()
   )
   
-  val init_param = Variables(correct_variables)
+//   val init_param = Variables(correct_variables)
   
   /*
   val init_messages_list = List[((ActorId,ActorId),List[Message])](
@@ -204,7 +213,7 @@ object ProtocolProof {
       (a1,SystemActor(a1, List(a2,a3))),
       (a2,SystemActor(a2, List(a1,a3))),
       (a3,SystemActor(a3, List(a1,a2))),
-      (a4,UserActor(a4, List((a1, WriteUser(Variable(1),1)))))
+      (a4,UserActor(a4))
     )
   )
   
@@ -237,30 +246,35 @@ object ProtocolProof {
   }
   
   def makeNetwork(p: Parameter) = {
-  
-    VerifiedNetwork(init_param,
+    require(validParam(p))
+    VerifiedNetwork(p,
 		init_states, 
 		init_messages,
 		init_getActor
 		)
   }ensuring(res => 
-    writeEmpty(res.states) && 
-    WriteHistory(res.messages, res.states) && 
-    //checkContent(init_states_list, init_states) && 
-    //checkContent(init_getActor_list, init_getActor) &&
     res.getActor(a1) == SystemActor(a1, List(a2,a3)) &&
     res.getActor(a2) == SystemActor(a2, List(a1,a3)) &&
     res.getActor(a3) == SystemActor(a3, List(a1,a2)) &&
-    res.getActor(a4) == UserActor(a4, List((a1, WriteUser(Variable(1),1)))) && 
+    res.getActor(a4) == UserActor(a4) && 
+    writeEmpty(res.states) && 
+    WriteHistory(res.messages, res.states) &&
+    initTableHistory(res.param, res.states) &&
+    tableHistory(res.param, res.states) &&
     messagesEmpty(channels) &&
+    not2WriteUser(channels, res.messages) &&
+    res.messages == init_messages &&
+    initMessageEmpty() &&
+    uniqueWriteUser(res.messages, channels) &&
     networkInvariant(res.param,res.states, res.messages, res.getActor) &&
     true
   )
   
   
   def validParam(p: Parameter): Boolean = {
-    val Variables(variables) = p
-    variables == correct_variables
+    val Param(variables, initMessages) = p
+    areWU(initMessages) &&
+    distinctElementsInit(initMessages)
   }
   
   // This is an invariant of the class VerifiedNetwork
@@ -277,7 +291,7 @@ object ProtocolProof {
     getActor(a1) == SystemActor(a1, List(a2,a3)) &&
     getActor(a2) == SystemActor(a2, List(a1,a3)) &&
     getActor(a3) == SystemActor(a3, List(a1,a2)) &&
-    getActor(a4) == UserActor(a4, List((a1, WriteUser(Variable(1),1)))) && 
+    getActor(a4) == UserActor(a4) && 
     WriteHistory(messages, states)  &&
     tableHistory(param, states) &&
     not2WriteUser(channels, messages)&&
@@ -288,7 +302,8 @@ object ProtocolProof {
   
   //basic functions
   def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]) = {
-    initial_actor.myId == a4
+    initial_actor.myId == a4 &&
+    validParam(p)
   }
     
   def userActorReceivePre(receiver: Actor, sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = { 
@@ -419,7 +434,7 @@ object ProtocolProof {
     val idM = (true, s, i)
     
     val newStates = net.states.updated(myId, CommonState(mem.updated(s,i),h++Set((true,s, i))))
-    val Variables(variables) = net.param
+    val variables = extractVariables(net.param)
     val UserState(newUserHistory,newc) = newStates(a4)
     newUserHistory.contains((true, s, i), Set()) &&
     updateCheckTable(net.param, net.states, s, i, myId) &&
@@ -570,10 +585,10 @@ object ProtocolProof {
     val id = sender
     val Read(s) = m
     val CommonState(mem,h) = receiver.state
-    val Variables(variables) = net.param
+    val variables = extractVariables(net.param)
     
     if (id == a4 && {
-          val Variables(variables) = net.param
+          val variables = extractVariables(net.param)
           variables.contains(s)
           }) {
       val newMessages = net.messages.updated((myId,a4), net.messages.getOrElse((myId,a4), Nil()) :+ Value(mem.getOrElse(s,0),(false, s, mem.getOrElse(s,0)),h))
@@ -639,7 +654,7 @@ object ProtocolProof {
         case _ => true
     }} && (
     a match {
-      case UserActor(_,_) => userActorReceivePre(a, sender, m)
+      case UserActor(_) => userActorReceivePre(a, sender, m)
       case SystemActor(_,_) => systemActorReceivePre(a, sender, m)
     })
   }
@@ -662,7 +677,9 @@ object ProtocolProof {
               true
             case _ => 
               removeNot2WriteUser(n.messages, sender, receiver, channels) &&
+              removeWU(n.messages, channels, (sender, receiver)) &&
               networkInvariant(n.param, n.states, messages2, n.getActor)
+              true
           }
  
       case _ => 
@@ -721,8 +738,9 @@ object ProtocolProof {
     areWU(initList) &&
     myId == a4 && 
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
+    differentInitMessage(initList, net.messages) &&
     distinctElements[(ActorId,ActorId)](channels) &&
-    differentInitMessage(initList, net.messages)
+    true
   }
   
   def initPre(
@@ -730,12 +748,40 @@ object ProtocolProof {
     initList: List[(ActorId,Message)], 
     net: VerifiedNetwork
   ): Boolean = {
-    myId == a4 && 
+    areWU(initList) &&
+    myId == a4 &&
+    distinctElementsInit(initList) &&  
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
-    distinctElements[(ActorId,ActorId)](channels) &&
     net.messages == init_messages &&
-    areWU(initList)
+    initMessageEmpty() &&
+    differentInitMessageEmpty(initList, net.messages) &&
+    differentInitMessage(initList, net.messages) &&
+    distinctChannels() &&
+    distinctElements[(ActorId,ActorId)](channels)&&
+    true
   }
+  
+  def initMessageEmpty(): Boolean = {
+    collectWUsList(init_messages, channels).isEmpty
+  }holds
+  
+  def differentInitMessageEmpty(
+    initList: List[(ActorId, Message)], 
+    messages: MMap[(ActorId,ActorId),List[Message]]): Boolean = {
+    require(distinctElementsInit(initList) && initMessageEmpty() && messages == init_messages)
+    initList match {
+      case Nil() => differentInitMessage(initList, messages)
+      case Cons(x,xs) => 
+        !newContains(x._2, xs) &&
+        collectWUsList(messages, channels).isEmpty &&
+        differentInitMessageEmpty(xs, messages) &&
+        differentInitMessage(initList, messages)        
+    }
+  }holds
+  
+  def distinctChannels():Boolean = {
+    distinctElements[(ActorId,ActorId)](channels)
+  }holds
   
   def inUserHistory(
     sender: ActorId, 
@@ -950,7 +996,7 @@ object ProtocolProof {
     states.contains(a2) &&
     states.contains(a3) &&
     states.contains(a4) && { 
-      val Variables(variables) = param
+      val variables = extractVariables(param)
       states(a4) match {
         case UserState(userHistory,c) =>
           tableHistoryOne(variables, states(a1),userHistory) &&
@@ -1012,7 +1058,7 @@ object ProtocolProof {
     ): Boolean = {
     require(tableHistory(param, states))
     val UserState(userHistory, c) = states(a4)
-    val Variables(variables) = param
+    val variables = extractVariables(param)
     addUserCheckTableOne(variables, states(a1), userHistory, t)&&
     addUserCheckTableOne(variables, states(a2), userHistory, t)&&
     addUserCheckTableOne(variables, states(a3), userHistory, t)
@@ -1034,7 +1080,7 @@ object ProtocolProof {
       }
     }
     val UserState(userHistory, c) = states(a4)
-    val Variables(variables) = param
+    val variables = extractVariables(param)
     val CommonState(mem, h) = states(id)
     val newStates = states.updated(id, CommonState(mem.updated(x,v),h++Set((true, x, v))))
     updateCheckTableOne(variables, states(id), userHistory, x, v) &&
@@ -1100,6 +1146,38 @@ object ProtocolProof {
           else true
         }
     }
+  }holds
+  
+  def initTableHistory(param: Parameter, states: MMap[ActorId, State]): Boolean = {
+    require(states == init_states &&
+    states.contains(a1) &&
+    states.contains(a2) &&
+    states.contains(a3) &&
+    states.contains(a4))
+      val variables = extractVariables(param)
+      states(a4) match {
+        case UserState(userHistory,c) =>
+          initTableHistoryOne(variables, states(a1),userHistory) &&
+          initTableHistoryOne(variables, states(a2),userHistory) &&
+          initTableHistoryOne(variables, states(a3),userHistory) &&
+          tableHistory(param, states)
+        case _ => false
+      }
+  }holds
+  
+  def initTableHistoryOne(variables: List[Variable], state: State, userHistory: List[((Boolean, Variable, BigInt),Set[(Boolean, Variable, BigInt)])]): Boolean = {
+    require(state == CommonState(init_mem, Set()))
+    state match {
+      case CommonState(mem, h) => 
+        variables match {
+          case Nil() => true
+          case Cons(x,xs) => 
+            mem.getOrElse(x, 0) == 0 &&
+            initTableHistoryOne(xs, state, userHistory) &&
+            tableHistoryOne(variables, state, userHistory)
+      }
+      case _ => false
+    }    
   }holds
   
   
@@ -1470,7 +1548,7 @@ object ProtocolProof {
         removeCollectWU(messages, xs, c) &&
         (collectWUsList(newMessages, channels) subsetOf collectWUsList(messages, channels))
     }
-  }
+  }holds
   
   def removeWU(
     messages: MMap[(ActorId,ActorId),List[Message]], 
@@ -1481,7 +1559,15 @@ object ProtocolProof {
       uniqueWriteUser(messages, channels) &&
       !messages.getOrElse(c,Nil()).isEmpty
     )
-    true
+    val Cons(x,chan) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c,chan)
+    channels match {
+      case Nil() => uniqueWriteUser(newMessages, channels)
+      case Cons(x,xs) => 
+        removeCollectWU(messages, channels, c) &&
+        removeWU(messages, xs, c) &&
+        uniqueWriteUser(newMessages,xs)
+    }
   }holds
   
   
