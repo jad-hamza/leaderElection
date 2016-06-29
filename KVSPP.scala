@@ -25,12 +25,8 @@ object PrettyPrinting {
   
   def actorIdToString(id: ActorId) = {
     id match {
-      case ActorIdSys(x) => if (x==1) {"A1"}
-			    else {
-			      if (x==2) {"A2"}
-			      else {"A3"}
-			    }
-      case ActorIdUser(x) => "A4"
+      case ActorIdSys(x) => "ASys(" + x + ")"
+      case ActorIdUser(x) => "AUs(" + x + ")"
     }
   }
   
