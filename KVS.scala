@@ -68,13 +68,15 @@ object Protocol {
   }ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
   
   case class SystemActor(myId: ActorId, otherActor: List[ActorId]) extends Actor {
-
+    
     def init()(implicit net: VerifiedNetwork) = {
       require(networkInvariant(net.param, net.states, net.messages, net.getActor))
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
 
     def broadcastAck(otherActor: List[ActorId], m: Message)(implicit net: VerifiedNetwork): Unit = {
-      require(broadcastAckPre(this, otherActor, m, net.param, net.states, net.messages, net.getActor))
+      require(
+        broadcastAckPre(this, otherActor, m, net.param, net.states, net.messages, net.getActor)
+      )
       otherActor match {
         case Nil() => ()
           val WriteSystem(s,i,idM,h) = m
