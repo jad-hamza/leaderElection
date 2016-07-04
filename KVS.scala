@@ -138,7 +138,7 @@ object Protocol {
     def initBis(initList: List[(ActorId, Message)])(implicit net: VerifiedNetwork): Unit = {
       require(initBisPre(myId, initList, net))
       
-      if (initBisPreBis(myId, initList, net)){
+      if (initBisPreBis(myId, initList, net)){ 
         val variables = extractVariables(net.param)
         state match {
           case UserState(l,counter) =>
@@ -154,7 +154,7 @@ object Protocol {
         }
       }
       else {
-        check(false)
+        check(true)
         ()
       }
     } ensuring(networkInvariant(net.param, net.states, net.messages, net.getActor))
