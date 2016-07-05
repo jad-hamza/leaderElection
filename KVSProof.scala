@@ -314,6 +314,7 @@ object ProtocolProof {
     prop3(res.messages, channels) &&
     initProp5(init_messages, channels) &&
     prop5(res.messages, channels) &&
+    initProp7(init_messages, channels) &&
     networkInvariant(res.param,res.states, res.messages, res.getActor) &&
     true
   )
@@ -368,6 +369,7 @@ object ProtocolProof {
     prop3(messages, channels) &&
     prop5(messages, channels) && 
     prop6(messages, channels) &&
+    prop7(channels, messages) &&
    true
   }
   
@@ -456,6 +458,7 @@ object ProtocolProof {
         userHistory.contains((idM,Set())) &&
         !collectWUsList(messages, channels).contains(WriteUser(x,v)) &&
         collectOtherActor(receiver.myId, otherActor, messages, WriteUser(x,v)) &&
+        collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) &&
         true
       case _ => false
     }
@@ -490,7 +493,8 @@ object ProtocolProof {
         case WriteSystem(x,v,idM,h) => 
           userHistory.contains((idM,Set())) &&
           !collectWUsList(messages, channels).contains(WriteUser(x,v)) &&
-          collectOtherActor(receiver.myId, otherActor, messages, WriteUser(x,v))
+          collectOtherActor(receiver.myId, otherActor, messages, WriteUser(x,v)) &&
+          collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) 
         case _ => false
       }
       }
@@ -509,6 +513,7 @@ object ProtocolProof {
         addOtherProp3(messages, channels, (myId,a4), AckUser(idM,h)) &&
         addOtherprop5(messages, channels, (myId,a4), AckUser(idM,h)) &&
         addOtherProp6(messages, channels, (myId,a4), AckUser(idM,h)) &&
+        addProp7(messages, channels, (myId, a4), AckUser(idM,h)) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
         networkInvariant(param, states, addMessage(otherActor, messages, m, myId), getActor) &&
@@ -520,9 +525,11 @@ object ProtocolProof {
         addUniqueWriteUser(messages, channels, (myId,x), m) &&
         (ajoutCheckWriteForAll(channels, messages, userHistory, m, myId, x)) &&
         addWSprop3(messages, channels, (myId,x), m) &&
-        broadcastAckPreInduct(receiver.myId, otherActor, messages, m) &&
+        broadcastAckPreInduct(myId, otherActor, messages, m) &&
+        broadcastAckPreInductProp7(myId, otherActor, messages, m) &&
         addWSprop5(messages, channels, (myId,x), m) &&
         addOtherProp6(messages, channels, (myId,x), m) &&
+        addProp7(messages, channels, (myId,x), m) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
         true
@@ -572,6 +579,8 @@ object ProtocolProof {
     tableHistory(net.param, newStates) &&
     lemmaProp5_2(myId, otherActor, net.messages, s, i) &&
     collectOtherActor(myId, otherActor, net.messages, WriteUser(s,i)) &&
+    lemmaProp7(myId, otherActor, net.messages, s, i) &&
+    collectOtherActorProp7(otherActor, net.messages, WriteUser(s,i)) &&
     networkInvariant(net.param, newStates, net.messages, net.getActor) &&
     true
   }holds
@@ -629,7 +638,9 @@ object ProtocolProof {
         addUniqueWriteUser(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
         addOtherProp3(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
         addOtherprop5(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
-        addWWProp6(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
+        addWWProp6(net.messages, channels, (myId, myId), 
+        WriteWaiting(s,i,idM,hs)) &&
+        addProp7(net.messages, channels, (myId,myId), WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -695,6 +706,7 @@ object ProtocolProof {
         WriteWaiting(s,i,idM,hs)) &&
         addOtherprop5(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
         addWWProp6(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
+        addProp7(net.messages, channels, (myId,myId), WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -747,6 +759,7 @@ object ProtocolProof {
       addOtherProp3(net.messages, channels, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       addOtherprop5(net.messages, channels, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       addOtherProp6(net.messages, channels, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
+      addProp7(net.messages, channels, (myId,id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       networkInvariant(net.param, net.states, newMessages, net.getActor) &&
       true
     }
@@ -848,6 +861,7 @@ object ProtocolProof {
               checkWrite(sms, h) &&
               removeProp5(n.messages, channels, (sender, receiver)) &&
               removeProp6(n.messages, channels, (sender, receiver)) &&
+              removeProp7(n.messages, channels, (sender, receiver)) &&
               prop3(messages2, channels) &&
               // m == WU : !collectWUsList(newMessages, channels).contains(WriteUser(s,i))
               // m == WU : !collectWSsList(newMessages, channels).contains(WriteUser(s,i))
@@ -861,6 +875,7 @@ object ProtocolProof {
               removeProp3(n.messages, (sender, receiver), channels)(n) &&
               removeProp5(n.messages, channels, (sender, receiver)) &&
               removeProp6(n.messages, channels, (sender, receiver)) &&
+              removeProp7(n.messages, channels, (sender, receiver)) &&
               prop3(messages2, channels) &&
               networkInvariant(n.param, n.states, messages2, n.getActor)
               true
@@ -906,6 +921,7 @@ object ProtocolProof {
           addWUprop3(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           addOtherprop5(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           addWUprop6(net.messages, channels, (a4,id), WriteUser(s,i)) &&
+          addProp7(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           not2WriteUser(channels, newMessages) &&
           WriteHistory(newMessages, newStates)  &&
           tableHistory(net.param, newStates) &&
@@ -2619,7 +2635,7 @@ object ProtocolProof {
       case Cons(x,Cons(y,ys)) =>
         add(messages, (id,x), m).getOrElse((id,y), Nil()) == messages.getOrElse((id,y), Nil()) &&
         broadcastAckPreInduct(id, Cons(x,ys), messages, m) &&
-        collectOtherActor(id, Cons(y,ys), add(messages, (id,x), m), WriteUser(s,i))
+        collectOtherActor(id, Cons(y,ys), add(messages, (id,x), m), WriteUser(s,i)) 
     }
   } holds
   
