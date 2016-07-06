@@ -144,7 +144,7 @@ object Protocol {
           case UserState(l,counter) =>
             initList match {
               case Nil() => ()
-              case Cons((id, WriteUser(s,i)), xs) if(validId(net, id)) =>()
+              case Cons((id, WriteUser(s,i)), xs) if(validId(net, id) && (id != a4)) =>()
                 !! (id,WriteUser(s, i))
                 update(UserState( Cons(((true, s, i),Set()), l), counter))
                 initBis(xs)
