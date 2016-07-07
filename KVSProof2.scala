@@ -1253,5 +1253,370 @@ object ProtocolProof2 {
     }
     
   }holds
+ 
   
+  
+// property 9
+// WS(id) in C(i,j) => not(WW(id) in C(j,j))
+
+// sketch of the proof:
+// - (i)  remove WS => not(WS) in C(i,j) (prop5)
+// - (ii) remove WS => not(WS in C(j,j) (prop7)
+// ==> can add WW
+
+// - (iii) remove WU => not(WW) (prop6)
+// ==> can add WS
+
+// -(iv) remove WW => not(WS)
+// ==> can add WW
+
+  def prop9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)]
+  ): Boolean = {
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        (collectWSs(messages.getOrElse(x, Nil())) & collectWWs(messages.getOrElse((x._2, x._2), Nil()))).isEmpty &&
+        prop9(messages, xs)
+    }
+  }
+
+  // (i)
+  def removeWSprop9_1(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId, ActorId)
+  ): Boolean = {
+    require(
+      prop5(messages, channels) &&
+      {
+       messages.getOrElse(c, Nil()) match {
+          case Cons(WriteSystem(s,i,_,_), xs) => true
+          case _ => false
+        }
+      } &&
+      channels.contains(c)
+    )
+    val Cons(WriteSystem(s,i,_,_),ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+  
+    channels match {
+      case Cons(x,xs) if (x==c) => 
+        !collectWSs(newMessages.getOrElse(c, Nil())).contains(WriteUser(s,i))
+      case Cons(x,xs) =>
+        removeWSprop9_1(messages, xs, c) &&
+        !collectWSs(newMessages.getOrElse(c, Nil())).contains(WriteUser(s,i))        
+    }
+  
+  }holds
+  
+  def lemmaProp9(
+    c: (ActorId,ActorId), 
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    m: Message
+  ): Boolean = {
+    require(
+      messages.getOrElse(c, Nil()).contains(m) &&
+      channels.contains(c) &&
+      {
+        m match {
+          case WriteSystem(s,i,_,_) => true
+          case _ => false
+        }
+      }
+      
+    )
+    val WriteSystem(s,i,_,_) = m
+    
+    channels match {
+      case Cons(x,xs) if (x==c) => 
+        theoremWS(messages.getOrElse(c, Nil()), m) &&
+        collectWSs(messages.getOrElse(c, Nil())).contains(WriteUser(s,i)) &&
+        collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))
+      case Cons(x,xs) =>
+        lemmaProp9(c, xs, messages, m) &&
+        collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))
+    }
+    
+  }holds
+  
+  // (i) and (ii)
+  def removeWSprop9_2(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId, ActorId)
+  ): Boolean = {
+    require(
+      prop5(messages, channels) &&
+      prop7(channels, messages) &&
+      {
+       messages.getOrElse(c, Nil()) match {
+          case Cons(WriteSystem(s,i,_,_), xs) => true
+          case _ => false
+        }
+      } &&
+      channels.contains(c)
+    )
+    val Cons(WriteSystem(s,i,idM,h),ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x == c) => 
+        removeWSprop9_1(messages, channels, c) &&
+        !collectWSs(newMessages.getOrElse(c, Nil())).contains(WriteUser(s,i)) &&
+        !collectNeighbour(c._2, xs, messages).contains(WriteUser(s,i)) &&
+        removeCollectNeighbour(c._2, messages, channels, c) &&
+        !collectNeighbour(c._2, xs, newMessages).contains(WriteUser(s,i)) &&
+        !collectNeighbour(c._2, channels, newMessages).contains(WriteUser(s,i)) &&
+        true
+      case Cons(x,xs) if (x._2 == c._2) => 
+        lemmaProp9(c, channels, messages, WriteSystem(s,i,idM,h)) &&
+        collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))&&
+        !collectWSs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        !collectWSs(newMessages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        removeWSprop9_2(messages, xs, c) &&
+        !collectNeighbour(c._2, channels, newMessages).contains(WriteUser(s,i)) &&
+        true
+      case Cons(x,xs) => 
+        removeWSprop9_2(messages, xs, c) &&
+        !collectNeighbour(c._2, channels, newMessages).contains(WriteUser(s,i)) &&
+        true
+    }
+  
+  }holds
+  
+  def addWWProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId, ActorId)],
+    id: ActorId,
+    m: Message
+  ): Boolean = {
+    require(
+      prop9(messages, channels) &&
+      {
+        m match {
+          case WriteWaiting(s,i,_,_) =>  
+            !collectNeighbour(id, channels, messages).contains(WriteUser(s,i))
+          case _ => false
+        }
+      }
+    )
+    val newMessages = add(messages, (id,id), m)
+    val WriteWaiting(s,i,_,_) = m
+  
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == id) => 
+        !collectWSs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        addCollect2One(messages.getOrElse(x, Nil()), m) &&
+        !collectWSs(newMessages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        addCollectOneWW(messages.getOrElse((id,id), Nil()), m) &&
+        (collectWSs(newMessages.getOrElse(x, Nil())) & collectWWs(newMessages.getOrElse((x._2, x._2), Nil()))).isEmpty &&
+        addWWProp9(messages, channels, id, m) &&
+        prop9(newMessages, channels) &&
+        true
+        
+      case Cons(x,xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        collectWSs(messages.getOrElse(x, Nil())) == collectWSs(newMessages.getOrElse(x, Nil())) &&
+        messages.getOrElse((x._2,x._2), Nil()) == newMessages.getOrElse((x._2,x._2), Nil()) &&
+        collectWWs(messages.getOrElse((x._2,x._2), Nil())) == collectWWs(newMessages.getOrElse((x._2,x._2), Nil())) &&
+        (collectWSs(newMessages.getOrElse(x, Nil())) & collectWWs(newMessages.getOrElse((x._2, x._2), Nil()))).isEmpty &&
+        addWWProp9(messages, channels, id, m) &&
+        prop9(newMessages, channels) &&
+        true
+    }
+  
+  }holds
+  
+  def removeWUProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId, ActorId)
+  ): Boolean = {
+    require(
+      prop6(messages, channels) &&
+      {
+        messages.getOrElse(c, Nil()) match {
+          case Cons(WriteUser(s,i), xs) => true
+          case _ => false
+        }
+      } &&
+      channels.contains(c)
+    )
+    val Cons(WriteUser(s,i),ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    theorem2(c, channels, WriteUser(s,i), messages) &&
+    collectWUsList(messages, channels).contains(WriteUser(s,i)) &&
+    !collectWWsList(messages, channels).contains(WriteUser(s,i)) &&
+    removeCollectWW(messages, channels, c) &&
+    !collectWWsList(newMessages, channels).contains(WriteUser(s,i))
+  
+  }holds
+  
+  def addWSProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId, ActorId)],
+    c: (ActorId,ActorId),
+    m: Message
+  ): Boolean = {
+    require(
+      prop9(messages, channels) &&
+      {
+        m match {
+          case WriteSystem(s,i,_,_) =>  
+            !collectWWs(messages.getOrElse((c._2, c._2), Nil())).contains(WriteUser(s,i))
+          case _ => false
+        }
+      } 
+    )
+  
+    val newMessages = add(messages, c, m)
+    val WriteSystem(s,i,_,_) = m
+  
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == c._2) => 
+        addCollect3One(messages.getOrElse((x._2,x._2), Nil()),m) &&
+        collectWWs(newMessages.getOrElse((x._2, x._2), Nil())) == collectWWs(messages.getOrElse((x._2, x._2), Nil())) &&
+        !collectWWs(messages.getOrElse((x._2, x._2), Nil())).contains(WriteUser(s,i)) &&
+        !collectWWs(newMessages.getOrElse((x._2, x._2), Nil())).contains(WriteUser(s,i)) &&
+        addCollectOneWS(messages.getOrElse(x, Nil()), m) &&
+        (collectWSs(newMessages.getOrElse(x, Nil())) & collectWWs(newMessages.getOrElse((x._2, x._2), Nil()))).isEmpty &&
+        addWSProp9(messages, xs, c, m) &&
+        prop9(newMessages, xs) &&
+        true
+        
+      case Cons(x,xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        messages.getOrElse((x._2,x._2), Nil()) == newMessages.getOrElse((x._2,x._2), Nil()) &&
+        (collectWSs(newMessages.getOrElse(x, Nil())) & collectWWs(newMessages.getOrElse((x._2, x._2), Nil()))).isEmpty &&
+        addWSProp9(messages, xs, c, m) &&
+        prop9(newMessages, xs) &&
+        true
+        
+    }
+  
+  }holds
+ 
+ def addOtherProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId, ActorId)],
+    c: (ActorId,ActorId),
+    m: Message
+  ): Boolean = {
+    require(
+      prop9(messages, channels) &&
+      {
+        m match {
+          case WriteSystem(s,i,_,_) =>  false
+          case WriteWaiting(s,i,_,_) => false
+          case _ => true
+        }
+      } 
+    )
+    val newMessages = add(messages, c, m)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        addCollect3One(messages.getOrElse((x._2,x._2), Nil()),m) &&
+        addCollect2One(messages.getOrElse(x, Nil()),m) &&
+        addOtherProp9(messages, xs, c, m) &&
+        prop9(newMessages, channels)
+    }
+    
+  }holds
+  
+  def removeAllProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId, ActorId)
+  ): Boolean = {
+    require(
+      prop9(messages, channels) && 
+      !messages.getOrElse(c, Nil()).isEmpty
+    )
+    val Cons(_,ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        removeCollectWS(messages, channels, c) &&
+        removeCollectWW(messages, channels, c) &&
+        removeAllProp9(messages, channels, c) &&
+        prop9(newMessages, channels)
+    }
+  
+  }holds
+  
+  def removeWWProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    id: ActorId
+  ): Boolean = {
+    require(
+      prop9(messages, channels) &&
+      {
+        messages.getOrElse((id,id), Nil()) match {
+          case Cons(WriteWaiting(s,i,_,_),xs) => true
+          case _ => false
+        }
+      }
+    )
+    val Cons(WriteWaiting(s,i,_,_),ds) = messages.getOrElse((id,id), Nil())
+    val newMessages = messages.updated((id,id), ds)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == id) =>
+        collectWWs(messages.getOrElse((id,id), Nil())).contains(WriteUser(s,i)) &&
+        !collectWSs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        removeCollectWS(messages, channels, (id,id))&&        
+        removeWWProp9(messages, xs, id) &&
+        !collectNeighbour(id, channels, newMessages).contains(WriteUser(s,i))
+      case Cons(x,xs) =>  
+        removeWWProp9(messages, xs, id) &&
+        !collectNeighbour(id, channels, newMessages).contains(WriteUser(s,i))
+    }
+  
+  }holds
+  
+  def removeProp9(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    c: (ActorId, ActorId)
+  ): Boolean = {
+    require(
+      prop9(messages, channels) && 
+      prop6(messages, channels) &&
+      prop5(messages, channels) &&
+      prop7(channels, messages) &&
+      !messages.getOrElse(c, Nil()).isEmpty &&
+      channels.contains(c)
+    )
+    val Cons(m,ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    m match {
+      case WriteSystem(s,i,_,_) =>
+        removeAllProp9(messages, channels, c) &&
+        removeWSprop9_2(messages, channels, c)
+      case WriteUser(s,i) =>
+        removeAllProp9(messages, channels, c) &&
+        removeWUProp9(messages, channels, c)
+      case WriteWaiting(s,i,_,_) if (c._1 == c._2) => 
+        removeAllProp9(messages, channels, c) &&
+        removeWWProp9(messages, channels, c._2)
+      case _ =>
+        removeAllProp9(messages, channels, c)
+    }
+  }holds
+
 }

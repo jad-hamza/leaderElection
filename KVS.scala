@@ -109,7 +109,7 @@ object Protocol {
           }
         
         case (id,WriteWaiting(s,i,idM,hs), CommonState(mem,h)) =>
-          if (idM == (true, s, i)) {
+          if (id==myId && idM == (true, s, i)) {
             if (checkHistory(h,hs)) {
               update(CommonState(mem.updated(s,i),h++Set(idM)));
             }
