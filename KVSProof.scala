@@ -318,6 +318,9 @@ object ProtocolProof {
     areInChannelsInit1() &&
     areInChannelsInit2() &&
     areInChannelsInit3() &&
+    areInChannelsBisInit1() &&
+    areInChannelsBisInit2() &&
+    areInChannelsBisInit3() &&
     writeEmpty(res.states) && 
     WriteHistory(res.messages, res.states) &&
     initTableHistory(res.param, res.states) &&
@@ -332,6 +335,7 @@ object ProtocolProof {
     prop5(res.messages, channels) &&
     initProp7(init_messages, channels) &&
     initProp4(init_messages, channels, init_states) &&
+    initProp9(init_messages, channels) &&
     networkInvariant(res.param,res.states, res.messages, res.getActor) &&
     true
   )
@@ -354,6 +358,18 @@ object ProtocolProof {
   def areInChannelsInit3(): Boolean = {
     areInChannels(a3, List(a1,a2))
   } holds
+  
+  def areInChannelsBisInit1(): Boolean = {
+    areInChannelsBis(List(a2,a3))
+  } holds
+  
+  def areInChannelsBisInit2(): Boolean = {
+    areInChannelsBis(List(a1,a3))
+  } holds
+  
+  def areInChannelsBisInit3(): Boolean = {
+    areInChannelsBis(List(a1,a2))
+  } holds
 
   
   
@@ -374,6 +390,9 @@ object ProtocolProof {
     areInChannels(a1, List(a2,a3)) &&
     areInChannels(a2, List(a1,a3)) &&
     areInChannels(a3, List(a1,a2)) &&
+    areInChannelsBis(List(a2,a3)) &&
+    areInChannelsBis(List(a1,a3)) &&
+    areInChannelsBis(List(a1,a2)) &&
     distinctElements[ActorId](List(a1,a2)) &&
     distinctElements[ActorId](List(a1,a3)) &&
     distinctElements[ActorId](List(a2,a3)) &&
@@ -454,6 +473,15 @@ object ProtocolProof {
     }
   }
   
+  def areInChannelsBis(l: List[ActorId]): Boolean = {
+    l match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        channels.contains((x,x)) &&
+        areInChannelsBis(xs)
+    }
+  }
+  
   def broadcastAckPre(
     receiver: Actor, 
     otherActor: List[ActorId], 
@@ -480,6 +508,7 @@ object ProtocolProof {
         !collectWUsList(messages, channels).contains(WriteUser(x,v)) &&
         collectOtherActor(receiver.myId, otherActor, messages, WriteUser(x,v)) &&
         collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) &&
+        collectOtherActorProp9(otherActor, messages, WriteUser(x,v)) &&
         true
       case _ => false
     }
@@ -515,7 +544,8 @@ object ProtocolProof {
           userHistory.contains((idM,Set())) &&
           !collectWUsList(messages, channels).contains(WriteUser(x,v)) &&
           collectOtherActor(receiver.myId, otherActor, messages, WriteUser(x,v)) &&
-          collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) 
+          collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) &&
+          collectOtherActorProp9(otherActor, messages, WriteUser(x,v))
         case _ => false
       }
       }
@@ -536,6 +566,7 @@ object ProtocolProof {
         addOtherProp6(messages, channels, (myId,a4), AckUser(idM,h)) &&
         addProp7(messages, channels, (myId, a4), AckUser(idM,h)) &&
         addOtherProp4(messages, channels, states, (myId,a4), AckUser(idM,h)) &&
+        addOtherProp9(messages, channels, (myId,a4), AckUser(idM,h)) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
         networkInvariant(param, states, addMessage(otherActor, messages, m, myId), getActor) &&
@@ -549,10 +580,12 @@ object ProtocolProof {
         addWSprop3(messages, channels, (myId,x), m) &&
         broadcastAckPreInduct(myId, otherActor, messages, m) &&
         broadcastAckPreInductProp7(myId, otherActor, messages, m) &&
+        broadcastAckPreInductProp9(myId, otherActor, messages, m) &&
         addWSprop5(messages, channels, (myId,x), m) &&
         addOtherProp6(messages, channels, (myId,x), m) &&
         addProp7(messages, channels, (myId,x), m) &&
         addOtherProp4(messages, channels, states, (myId,x), m) &&
+        addWSProp9(messages, channels, (myId,x), m) &&
         WriteHistory(newMessages, states)  &&
         networkInvariant(param, states, newMessages, getActor) &&
         true
@@ -570,6 +603,7 @@ object ProtocolProof {
       receiver match {
         case SystemActor(_,otherActor) => 
           areInChannels(receiver.myId, otherActor) &&
+          areInChannelsBis(otherActor) &&
           true
         case _ => false
       }
@@ -582,7 +616,8 @@ object ProtocolProof {
         case (id, WriteUser(s,i), CommonState(mem,h)) => 
           userHistory.contains(((true, s, i),Set())) &&
           !collectWSsList(net.messages, channels).contains(WriteUser(s,i)) &&
-          !collectWUsList(net.messages, channels).contains(WriteUser(s,i))          
+          !collectWUsList(net.messages, channels).contains(WriteUser(s,i)) &&
+          !collectWWsList(net.messages, channels).contains(WriteUser(s,i)) 
         case _ => false
       }
       }
@@ -606,6 +641,8 @@ object ProtocolProof {
     lemmaProp7(myId, otherActor, net.messages, s, i) &&
     collectOtherActorProp7(otherActor, net.messages, WriteUser(s,i)) &&
     updateStateSystemProp4(net.messages, channels, net.states, myId, s, i) &&
+    lemmaReceiveProp9(otherActor, net.messages, WriteUser(s,i)) &&    
+    collectOtherActorProp9(otherActor, net.messages, WriteUser(s,i))
     networkInvariant(net.param, newStates, net.messages, net.getActor) &&
     true
   }holds
@@ -621,11 +658,19 @@ object ProtocolProof {
       {
       val UserState(userHistory,c) = net.states(a4)
       m match {
-        case WriteUser(x,v) => userHistory.contains(((true, x, v),Set()))
+        case WriteUser(x,v) => 
+          userHistory.contains(((true, x, v),Set())) && 
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWSsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWWsList(net.messages, channels).contains(WriteUser(x,v))
         case WriteSystem(x,v,idM,h) => 
           userHistory.contains((idM,Set())) &&
-          !collectWUsList(net.messages, channels).contains(WriteUser(x,v))
-        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
+        case WriteWaiting(x,v,idM,h) => 
+          userHistory.contains((idM,Set())) &&
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
         case _ => true
       }
       } && 
@@ -668,6 +713,7 @@ object ProtocolProof {
         WriteWaiting(s,i,idM,hs)) &&
         addProp7(net.messages, channels, (myId,myId), WriteWaiting(s,i,idM,hs)) &&
         addOtherProp4(net.messages, channels, net.states, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
+        addWWProp9(net.messages, channels, myId, WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -687,13 +733,19 @@ object ProtocolProof {
       {
       val UserState(userHistory,c) = net.states(a4)
       m match {
-        case WriteUser(x,v) => userHistory.contains(((true, x, v),Set()))
+        case WriteUser(x,v) => 
+          userHistory.contains(((true, x, v),Set())) && 
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWSsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWWsList(net.messages, channels).contains(WriteUser(x,v))
         case WriteSystem(x,v,idM,h) => 
           userHistory.contains((idM,Set())) &&
-          !collectWUsList(net.messages, channels).contains(WriteUser(x,v))
-        case WriteWaiting(x,v,idM,h) => 
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
+        case WriteWaiting(x,v,idM,h) if (receiver.myId == sender) => 
           userHistory.contains((idM,Set())) &&
-          !collectWUsList(net.messages, channels).contains(WriteUser(x,v))
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
         case _ => true
       }
       } && 
@@ -736,6 +788,7 @@ object ProtocolProof {
         addWWProp6(net.messages, channels, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
         addProp7(net.messages, channels, (myId,myId), WriteWaiting(s,i,idM,hs)) &&
         addOtherProp4(net.messages, channels, net.states, (myId, myId), WriteWaiting(s,i,idM,hs)) &&
+        addWWProp9(net.messages, channels, myId, WriteWaiting(s,i,idM,hs)) &&
         networkInvariant(net.param, net.states, newMessages, net.getActor)
       }
     }
@@ -753,9 +806,19 @@ object ProtocolProof {
       {
       val UserState(userHistory,c) = net.states(a4)
       m match {
-        case WriteUser(x,v) => userHistory.contains(((true, x, v),Set()))
-        case WriteSystem(x,v,idM,h) => userHistory.contains((idM,Set()))
-        case WriteWaiting(x,v,idM,h) => userHistory.contains((idM,Set()))
+        case WriteUser(x,v) => 
+          userHistory.contains(((true, x, v),Set())) && 
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWSsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectWWsList(net.messages, channels).contains(WriteUser(x,v))
+        case WriteSystem(x,v,idM,h) => 
+          userHistory.contains((idM,Set())) &&
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
+        case WriteWaiting(x,v,idM,h) => 
+          userHistory.contains((idM,Set())) &&
+          !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
+          !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
         case _ => true
       }
       } && 
@@ -790,6 +853,7 @@ object ProtocolProof {
       addOtherProp6(net.messages, channels, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       addProp7(net.messages, channels, (myId,id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       addOtherProp4(net.messages, channels, net.states, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
+      addOtherProp9(net.messages, channels, (myId, id), Value(mem.getOrElse(s,0), (false, s, mem.getOrElse(s,0)), h)) &&
       networkInvariant(net.param, net.states, newMessages, net.getActor) &&
       true
     }
@@ -803,10 +867,12 @@ object ProtocolProof {
       receiver match {
         case SystemActor(_,otherActor) => 
           areInChannels(receiver.myId, otherActor) &&
+          areInChannelsBis(otherActor) &&
           true
         case _ => false
       }
     }
+    
     val SystemActor(myId, otherActor) = receiver
     
     (receiver.myId == a1 || receiver.myId == a2 || receiver.myId == a3) &&
@@ -823,7 +889,7 @@ object ProtocolProof {
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
-        case WriteWaiting(x,v,idM,h) => 
+        case WriteWaiting(x,v,idM,h) if (receiver.myId == sender) => 
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectNeighbour(receiver.myId, channels, net.messages).contains(WriteUser(x,v))
@@ -834,7 +900,7 @@ object ProtocolProof {
     (sender, m, receiver.state) match {
       case (id, WriteUser(s,i), CommonState(mem,h)) => 
         !collectWUsList(net.messages, channels).contains(WriteUser(s,i)) &&
-        !collectWSsList(net.messages, channels).contains(WriteUser(s,i))
+        !collectWSsList(net.messages, channels).contains(WriteUser(s,i)) &&
         systemActorReceivePreCase1(receiver, sender, m)
         
       case (id, WriteSystem(s,i,idM,hs), CommonState(mem,h)) =>
@@ -852,6 +918,10 @@ object ProtocolProof {
   }
   
   def receivePre(a: Actor, sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
+    validId(net, sender) &&
+    validId(net, a.myId) &&
+    net.states.contains(sender) &&
+    net.states.contains(a.myId) &&
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
     {
     val UserState(userHistory,c) = net.states(a4)
@@ -865,18 +935,23 @@ object ProtocolProof {
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectNeighbour(a.myId, channels, net.messages).contains(WriteUser(x,v))
-        case WriteWaiting(x,v,idM,h) => 
+        case WriteWaiting(x,v,idM,h) if (a.myId == sender) => 
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectNeighbour(a.myId, channels, net.messages).contains(WriteUser(x,v))
         case _ => true
     }} && (
     a match {
-      case UserActor(_) => userActorReceivePre(a, sender, m)
+      case UserActor(_) => 
+        a.myId == a4 &&
+        userActorReceivePre(a, sender, m)
       case SystemActor(myId,otherActor) => 
+        (a.myId == a1 || a.myId == a2 || a.myId == a3) &&
         areInChannels(a.myId, otherActor) &&
+        areInChannelsBis(otherActor) &&
         distinctElements(otherActor) &&
-        systemActorReceivePre(a, sender, m)
+        systemActorReceivePre(a, sender, m) &&
+        true
     })
   }
   
@@ -966,6 +1041,7 @@ object ProtocolProof {
           addWUprop6(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           addProp7(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           addWUprop4(net.messages, channels, net.states, (a4,id), WriteUser(s,i)) &&
+          addOtherProp9(net.messages, channels, (a4,id), WriteUser(s,i)) &&
           not2WriteUser(channels, newMessages) &&
           WriteHistory(newMessages, newStates)  &&
           tableHistory(net.param, newStates) &&

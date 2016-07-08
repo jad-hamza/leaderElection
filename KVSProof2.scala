@@ -1619,4 +1619,109 @@ object ProtocolProof2 {
     }
   }holds
 
+  def collectOtherActorProp9(
+    otherActor: List[ActorId],
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    m: Message
+  ): Boolean = {
+    otherActor match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        !collectWWs(messages.getOrElse((x, x), Nil())).contains(m) &&
+        collectOtherActorProp9(xs, messages, m)
+    }
+  }
+  
+  def lemmaReceiveProp9(
+    otherActor: List[ActorId],
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    m: Message
+  ): Boolean = {
+    require(
+      areInChannelsBis(otherActor) &&
+      !collectWWsList(messages, channels).contains(m)
+    )
+    
+    otherActor match {
+      case Nil() => true
+      case Cons(x,xs) =>
+        collectListToOne((x,x), channels, messages, m) &&
+        !collectWWs(messages.getOrElse((x,x), Nil())).contains(m) &&
+        lemmaReceiveProp9(xs, messages, m) &&
+        collectOtherActorProp9(otherActor, messages, m)
+    }
+  }holds
+  
+  def collectListToOne(
+    c: (ActorId, ActorId),
+    channels: List[(ActorId, ActorId)],
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    m: Message
+  ): Boolean = {
+    require(
+      !collectWWsList(messages, channels).contains(m) &&
+      channels.contains(c)
+    )
+    
+    channels match {
+      case Cons(x,xs) if (x==c) => 
+        !collectWWs(messages.getOrElse(c, Nil())).contains(m)
+      case Cons(x,xs) => 
+        collectListToOne(c, xs, messages, m) &&
+        !collectWWs(messages.getOrElse(c, Nil())).contains(m)
+    }
+  
+  }holds
+  
+  def broadcastAckPreInductProp9(
+    myId : ActorId,
+    otherActor: List[ActorId],
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    m: Message
+  ): Boolean = {
+    require(
+      distinctElements[ActorId](otherActor) &&
+      {
+        m match {
+          case WriteSystem(s,i,_idM,h) => 
+            collectOtherActorProp9(otherActor, messages, WriteUser(s,i))
+          case _ => false
+        }
+      } &&
+      !otherActor.isEmpty
+    )
+    val WriteSystem(s,i,idM,h) = m
+    val Cons(id,_) = otherActor
+    val newMessages = add(messages, (myId,id), m) 
+    
+    otherActor match {
+      case Cons(x,Nil()) => true
+      case Cons(x,Cons(y,ys)) => 
+        x == id &&
+        x != y &&
+        (y,y) != (myId,id) &&
+        messages.getOrElse((y,y), Nil()) == newMessages.getOrElse((y,y), Nil()) &&
+        !collectWWs(messages.getOrElse((y, y), Nil())).contains(WriteUser(s,i)) &&
+        !collectWWs(newMessages.getOrElse((y, y), Nil())).contains(WriteUser(s,i)) &&
+        broadcastAckPreInductProp9(myId, Cons(x,ys), messages, m) &&
+        collectOtherActorProp9(Cons(y,ys), newMessages, WriteUser(s,i)) &&
+        true
+    }
+    
+  }holds
+  
+  def initProp9(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    channels: List[(ActorId, ActorId)]
+  ): Boolean = {
+    require(collectWSsList(messages, channels).isEmpty)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        collectWSs(messages.getOrElse(x, Nil())).isEmpty &&
+        initProp9(messages, xs) &&
+        prop9(messages, channels)
+    }
+  }holds
 }
