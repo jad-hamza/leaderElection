@@ -32,17 +32,28 @@ object ProtocolProof {
   
   def makeNetwork(p: Parameter) = {
     
-    def states(id: ActorId): Option[State] = id match {
-      case ActorId1() => Some(CCounter(0))
-      case ActorId2() => Some(VCounter(0))
-    }
+//     def states(id: ActorId): Option[State] = id match {
+//       case ActorId1() => Some(CCounter(0))
+//       case ActorId2() => Some(VCounter(0))
+//     }
+//     
+//     def getActor(id: ActorId): Option[Actor] = id match {
+//       case ActorId1() => Some(CountingActor(actor1))
+//       case ActorId2() => Some(CheckingActor(actor2))
+//     }
     
-    def getActor(id: ActorId): Option[Actor] = id match {
-      case ActorId1() => Some(CountingActor(actor1))
-      case ActorId2() => Some(CheckingActor(actor2))
-    }
-    
-    VerifiedNetwork(NoParam(), MMap(states), MMap(), MMap(getActor))
+    VerifiedNetwork(
+      NoParam(), 
+      MMap.makeMap(List[(ActorId,State)](
+        (ActorId1(), CCounter(0)),
+        (ActorId2(), VCounter(0))
+      )), 
+      MMap.makeMap(List()), 
+      MMap.makeMap(List[(ActorId,Actor)](
+        (ActorId1(), CountingActor(actor1)), 
+        (ActorId2(), CountingActor(actor2))
+      ))
+    )
   } ensuring(res => networkInvariant(res.param, res.states, res.messages, res.getActor))
 
   
