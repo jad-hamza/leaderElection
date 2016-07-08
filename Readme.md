@@ -6,6 +6,6 @@ Counting Actor: verifies in 15 sec
 
     leon Counting* FifoNetwork.scala Networking.scala MMap.scala --assumepre
 
-Key-value store: verifies in 5 sec
+Key-value store: verifies in 4 to 5 min
 
     leon KVS* FifoNetwork.scala Networking.scala OMap.scala --assumepre
