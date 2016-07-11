@@ -267,7 +267,12 @@ object ProtocolProof2 {
     collectWWs(l) == collectWWs(l :+ m)       
   } holds
   
-  def addCollect3(messages: MMap[(ActorId,ActorId),List[Message]], c: (ActorId,ActorId), m: Message, channels: List[(ActorId,ActorId)]): Boolean = {
+  def addCollect3(
+    messages: MMap[(ActorId,ActorId),List[Message]], 
+    c: (ActorId,ActorId),
+    m: Message, 
+    channels: List[(ActorId,ActorId)]
+  ): Boolean = {
   require({
       m match {
         case WriteWaiting(s,i,id,h) => false 
@@ -766,7 +771,7 @@ object ProtocolProof2 {
   
   
 // property 4
-// WW(id) in C(i,j) => not id in h_j
+// WU(id) in C(i,j) => not id in h_j
 
 // sketch proof:
 // - receiving a WU(id) there are no WS, WW, other WU in channels
