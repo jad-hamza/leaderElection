@@ -782,7 +782,7 @@ object ProtocolProof2 {
 // adding a WU(id) in C(i,j) there is not id in h_k (for all k)
 
 
-def allHistoriesContains_aux(
+  def allHistoriesContains_aux(
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],

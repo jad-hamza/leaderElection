@@ -422,4 +422,766 @@ object ProtocolProof3 {
     }
   }holds
  
+
+
+
+
+//property 8
+
+  def prop8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)]
+  ): Boolean = {
+  
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        prop8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState())) &&
+        prop8(messages, states, xs)
+    }
+    
+  }
+  
+  def prop8One(
+    list: List[Message], 
+    state: State
+  ): Boolean = {
+    
+    state match {
+      case CommonState(mem,h) =>
+        list match {
+          case Nil() => true
+          case Cons(m,xs) => 
+            m match {
+              case WriteSystem(s,i,_,_) => 
+                !h.contains((true,s,i)) &&
+                prop8One(xs, state)
+              case _ => 
+                prop8One(xs, state)
+            }
+        }
+      case _ => true
+    }
+  }
+  
+  def addOtherProp8(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)],
+    c: (ActorId,ActorId),
+    m: Message
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      {
+        m match {
+          case WriteSystem(_,_,_,_) => false
+          case _ => true
+        }
+      }
+    )
+    val newMessages = add(messages, c, m)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x == c) => 
+        addOtherProp8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState()), m) &&
+        addOtherProp8(messages, states, xs, c, m) &&
+        prop8(newMessages, states, channels)
+      case Cons(x, xs) => 
+        messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+        addOtherProp8(messages, states, xs, c, m) &&
+        prop8(newMessages, states, channels)
+    }
+  
+  }holds
+  
+  def addOtherProp8One(
+    list: List[Message], 
+    state: State, 
+    m: Message
+  ): Boolean = {
+    require(
+      m match {
+        case WriteSystem(_,_,_,_) => false
+        case _ => 
+          prop8One(list, state)
+      }
+    )
+
+    state match {
+      case CommonState(mem,h) => 
+        list match {
+          case Nil() => prop8One(list :+ m, state)
+          case Cons(x,xs) =>  
+            addOtherProp8One(xs, state, m) &&
+            prop8One(list :+ m, state)
+        }
+      case _ => true
+    }
+
+  }holds
+  
+  def removeWUProp8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)], 
+    actors: List[ActorId],
+    c: (ActorId, ActorId) 
+  ): Boolean = {
+    require(
+      prop4(messages, states, channels, actors) &&
+      {
+        messages.getOrElse(c, Nil()) match {
+          case Cons(WriteUser(s,i), xs) => true
+          case _ => false
+        }
+      } &&
+      channels.contains(c)
+    )
+    val Cons(WriteUser(s,i),ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    channels match {
+      case Cons(x,xs) if (x == c) => 
+        !allHistoriesContains_aux(s, i, actors, states)
+      case Cons(x,xs) =>
+        removeWUProp8(messages, states, xs, actors, c) &&
+        !allHistoriesContains_aux(s, i, actors, states)
+    }
+  
+  }holds
+  
+  def removeAllProp8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)],
+    c: (ActorId, ActorId) 
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      !messages.getOrElse(c, Nil()).isEmpty
+    )
+    val Cons(m,ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x == c) => 
+        prop8One(newMessages.getOrElse(c, Nil()), states.getOrElse(x._2, BadState())) &&
+        removeAllProp8(messages, states, xs, c) &&
+        prop8(newMessages, states, channels) &&
+        true
+      case Cons(x,xs) =>
+        newMessages.getOrElse(x, Nil()) == messages.getOrElse(x, Nil()) &&
+        removeAllProp8(messages, states, xs, c) &&
+        prop8(newMessages, states, channels) &&
+        true
+    }
+  
+  }holds
+  
+  def removeProp8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
+    c: (ActorId, ActorId) 
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      !messages.getOrElse(c, Nil()).isEmpty &&
+      prop4(messages, states, channels, actors) &&
+      channels.contains(c)
+    )
+    val Cons(m,ds) = messages.getOrElse(c, Nil())
+    val newMessages = messages.updated(c, ds)
+    
+    m match {
+      case WriteUser(s,i) => 
+        removeAllProp8(messages, states, channels, c) &&
+        removeWUProp8(messages, states, channels, actors, c)
+      case _ =>
+        removeAllProp8(messages, states, channels, c)
+    }
+  
+  
+  }holds
+  
+  def lemmaProp8(
+    s: Variable,
+    i: BigInt, 
+    states: MMap[ActorId, State],
+    actors: List[ActorId],
+    id: ActorId
+  ): Boolean = {
+    require(
+      !allHistoriesContains_aux(s,i,actors, states) &&
+      actors.contains(id)
+    )
+  
+    actors match {
+      case Cons(x,xs) if (x == id) => 
+        states.getOrElse(id, BadState()) match {
+          case CommonState(mem,h) =>
+            !h.contains((true, s, i))
+          case _ =>
+            true
+        }
+      case Cons(x,xs) =>
+        lemmaProp8(s,i,states,xs,id) &&
+        {
+          states.getOrElse(id, BadState()) match {
+            case CommonState(mem,h) =>
+              !h.contains((true, s, i))
+            case _ =>
+              true
+          }
+        }
+    }
+  }holds
+  
+  def addWSProp8(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)],
+    c: (ActorId,ActorId),
+    m: Message,
+    actors: List[ActorId]
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      actors.contains(c._2) &&
+      {
+        m match {
+          case WriteSystem(s,i,_,_) => 
+            !allHistoriesContains_aux(s,i,actors, states)
+          case _ => false
+        }
+      }
+    )
+    val newMessages = add(messages, c, m)
+    val WriteSystem(s,i,_,_) = m
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x == c) => 
+        lemmaProp8(s,i,states, actors, c._2) &&
+        addWSProp8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState()), m) &&
+        prop8One(newMessages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState())) &&
+        addWSProp8(messages, states, xs, c, m, actors) &&
+        prop8(newMessages, states, channels)
+      case Cons(x,xs) => 
+        newMessages.getOrElse(x, Nil()) == messages.getOrElse(x, Nil()) &&
+        addWSProp8(messages, states, xs, c, m, actors) &&
+        prop8(newMessages, states, channels)
+    }
+    
+  }holds
+  
+  def addWSProp8One(
+    list: List[Message], 
+    state: State, 
+    m: Message
+  ): Boolean = {
+    require(
+      prop8One(list, state) &&
+      {
+        m match {
+          case WriteSystem(s,i,_,_) => 
+            state match {
+              case CommonState(mem,h) =>
+                !h.contains((true, s, i))
+              case _ =>
+                true
+            }
+          case _ => false
+        }
+      }
+    )
+    
+    state match {
+      case CommonState(mem,h) => 
+        list match {
+          case Nil() => prop8One(list :+ m, state)
+          case Cons(x,xs) =>
+            addWSProp8One(xs, state, m) &&
+            prop8One(list :+ m, state)
+        }
+      case _ =>
+        true
+    }
+  
+  }holds
+  
+  def initProp8(
+   messages: MMap[(ActorId, ActorId), List[Message]],
+   channels: List[(ActorId, ActorId)], 
+   states: MMap[ActorId, State]
+  ): Boolean = {
+    require(
+      collectWSsList(messages, channels).isEmpty
+    )
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) => 
+        collectWSs(messages.getOrElse(x, Nil())).isEmpty &&
+        initProp8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState())) &&
+        initProp8(messages, xs, states) &&
+        prop8(messages, states, channels)
+    }
+  }holds
+  
+  def initProp8One(
+    list: List[Message],
+    state: State
+  ): Boolean = {
+    require(
+      collectWSs(list).isEmpty
+    )
+  
+    state match {
+      case CommonState(mem,h) =>
+        list match {
+          case Nil() => true
+          case Cons(m,xs) => 
+            m match {
+              case WriteSystem(s,i,_,_) => false
+              case _ => 
+                initProp8One(xs, state) &&
+                prop8One(list, state)
+            }
+        }
+      case _ => true
+    }   
+  
+  }holds
+  
+  def updateStateUserProp8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)], 
+    id: ActorId,
+    newState: State
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      {
+        newState match {
+          case UserState(_,_) => true
+          case _ => false
+        }
+      }
+    )
+    val newStates = states.updated(id, newState)
+    
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == id) => 
+        prop8One(messages.getOrElse(x, Nil()), newState) &&
+        updateStateUserProp8(messages, states, xs, id, newState) &&
+        prop8(messages, newStates, channels)
+      case Cons(x,xs) =>
+        states.getOrElse(x._2, BadState()) == newStates.getOrElse(x._2, BadState()) &&
+        updateStateUserProp8(messages, states, xs, id, newState) &&
+        prop8(messages, newStates, channels)
+    }
+  
+  }holds
+  
+  def updateStateSystemProp8(
+    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: MMap[ActorId, State],
+    channels: List[(ActorId, ActorId)], 
+    id: ActorId,
+    s: Variable, 
+    i: BigInt
+  ): Boolean = {
+    require(
+      prop8(messages, states, channels) &&
+      !collectNeighbour(id, channels, messages).contains(WriteUser(s,i)) &&
+      {
+        states.getOrElse(id, BadState()) match {
+          case CommonState(mem,h) => true
+          case _ => false
+        }
+      }
+    )
+    val CommonState(mem,h) = states.getOrElse(id, BadState())
+    val newState = CommonState(mem.updated(s,i),h++Set((true,s,i)))
+    val newStates = states.updated(id, newState)
+  
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == id) =>
+        !collectWSs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+        updateStateSystemProp8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState()), s, i) &&
+        prop8One(messages.getOrElse(x, Nil()), newStates.getOrElse(x._2, BadState())) &&
+        updateStateSystemProp8(messages, states, xs, id, s, i) &&
+        prop8(messages, newStates, channels)
+        
+      case Cons(x,xs) =>  
+        states.getOrElse(x._2, BadState()) == newStates.getOrElse(x._2, BadState()) &&
+        updateStateSystemProp8(messages, states, xs, id, s, i) &&
+        prop8(messages, newStates, channels)
+    }
+  
+  }holds
+  
+  def updateStateSystemProp8One(
+    list: List[Message], 
+    state: State, 
+    s: Variable, 
+    i: BigInt
+  ): Boolean = {
+    require(
+      prop8One(list, state) &&
+      !collectWSs(list).contains(WriteUser(s,i)) &&
+      {
+        state match {
+          case CommonState(mem,h) => true
+          case _ => false
+        }
+      }
+    )
+    val CommonState(mem,h) = state
+    val newState = CommonState(mem.updated(s,i),h++Set((true,s,i)))
+    
+    state match {
+      case CommonState(mem,h) =>
+        list match {
+          case Nil() => true
+          case Cons(WriteSystem(x,v,_,_), xs) if ((x,v) == (s,i)) => 
+            false
+          case Cons(WriteSystem(x,v,_,_), xs) =>
+            !(h ++Set((true, s,i))).contains((true,x,v)) &&
+            updateStateSystemProp8One(xs, state, s, i) &&
+            prop8One(list, newState)
+          case Cons(x,xs) => 
+            updateStateSystemProp8One(xs, state, s, i) &&
+            prop8One(list, newState)
+        }
+      case _ => true
+    }
+  
+  }holds
+  
+  def lemmaProp8_2(
+    messages: MMap[(ActorId,ActorId),List[Message]],
+    channels: List[(ActorId,ActorId)],
+    id: ActorId,
+    m: Message
+  ): Boolean = {
+    require(
+      !collectWSsList(messages, channels).contains(m)
+    )
+  
+    channels match {
+      case Nil() => true
+      case Cons(x,xs) if (x._2 == id) =>
+        !collectWSs(messages.getOrElse(x, Nil())).contains(m) &&
+        lemmaProp8_2(messages, xs, id, m) &&
+        !collectNeighbour(id, channels, messages).contains(m)
+      case Cons(x,xs) =>  
+        lemmaProp8_2(messages, xs, id, m) &&
+        !collectNeighbour(id, channels, messages).contains(m)
+    }
+  
+  }holds
+  
+  def subLemma(
+    s: Variable, 
+    i: BigInt,
+    actors: List[ActorId], 
+    states: MMap[ActorId, State], 
+    id: ActorId
+  ): Boolean = {
+    require(
+      !allHistoriesContains_aux(s, i, actors, states) &&
+      actors.contains(id)
+    )
+    
+    actors match {
+      case Cons(x,xs) if (x == id) =>   
+        states.getOrElse(id, BadState()) match {
+          case CommonState(mem, h) =>
+            !h.contains((true,s,i))
+          case _ => true
+        }
+      case Cons(x,xs) =>
+        subLemma(s,i,xs,states,id) &&
+        {
+        states.getOrElse(id, BadState()) match {
+          case CommonState(mem, h) =>
+            !h.contains((true,s,i))
+          case _ => true
+        }
+        }
+    }
+    
+  }holds
+  
+  def lemmaProp8_3(
+    s: Variable, 
+    i: BigInt,
+    otherActor: List[ActorId], 
+    actors: List[ActorId], 
+    states: MMap[ActorId, State], 
+    newState: State, 
+    id: ActorId
+  ): Boolean = {
+    require(
+      !allHistoriesContains_aux(s, i, actors, states) &&
+      subsetOf(otherActor, actors) &&
+      !otherActor.contains(id)
+    )
+    val newStates = states.updated(id, newState)
+    
+    otherActor match {
+      case Nil() => true
+      case Cons(x, xs) => 
+        subLemma(s,i,actors,states,x) &&
+        newStates.getOrElse(x, BadState()) == states.getOrElse(x, BadState()) &&
+        lemmaProp8_3(s,i,xs,actors,states,newState,id) &&
+        !allHistoriesContains_aux(s, i, otherActor, newStates)
+    }
+  
+  }holds
+  
+  
+
+
+
+
+
+  def collectIDs(
+    channels: List[(ActorId, ActorId)],
+    states: MMap[ActorId, State],
+    s: Variable, 
+    i: BigInt
+  ): Set[ActorId] = {
+    channels match {
+      case Nil() => Set()
+      case Cons(x,xs) => 
+        states.getOrElse(x._2, BadState()) match {
+          case CommonState(mem,h) if (h.contains((true,s,i))) =>
+            collectIDs(xs, states, s, i) ++Set(x._2)
+          case _ => 
+            collectIDs(xs, states, s, i)
+        }
+    }
+  }
+  
+//   def removeWUProp8(
+//     messages: MMap[(ActorId,ActorId),List[Message]],
+//     channels: List[(ActorId,ActorId)],
+//     states: MMap[ActorId, State],
+//     c: (ActorId, ActorId)
+//   ): Boolean = {
+//     require(
+//       uniqueWriteUser(messages, channels) &&
+//       prop4_aux(messages, states, channels) &&
+//       {
+//         messages.getOrElse(c, Nil()) match {
+//           case Cons(x@WriteUser(s,i), xs) => 
+//             true
+//           case _ => false
+//         }
+//       } &&
+//       channels.contains(c)
+//     )
+//     val Cons(WriteUser(s,i),ds) = messages.getOrElse(c, Nil())
+//     
+//     channels match {
+//       case Cons(x,xs) if (x == c) => 
+//         !allHistoriesContains(s, i, channels, states) &&
+//         lemmaProp8(s,i,channels, states) &&
+//         collectIDs(channels, states, s, i).isEmpty
+//       case Cons(x,xs) => 
+//         theorem2(c, xs, WriteUser(s,i), messages) && 
+//         collectWUsList(messages, xs).contains(WriteUser(s,i)) &&
+//         !collectWUs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
+//         removeWUProp8(messages, xs, states, c) &&
+//         collectIDs(channels, states, s, i).isEmpty &&
+//         true
+//     }
+//   
+//   }holds
+//   
+//   
+//   
+//   def otherActorProp8(
+//     channels: List[(ActorId, ActorId)],
+//     messages: MMap[(ActorId,ActorId),List[Message]],
+//     otherActor: List[ActorId],
+//     m: Message
+//   ): Boolean = {
+//     otherActor match {
+//       case Nil() => true
+//       case Cons(x,xs) =>
+//         !collectNeighbour(x, channels, messages).contains(m) &&
+//         otherActorProp8(channels, messages, xs, m)
+//     }
+//   }
+//   
+//   def broadcastProp8(
+//     channels: List[(ActorId, ActorId)],
+//     messages: MMap[(ActorId,ActorId),List[Message]],
+//     otherActor: List[ActorId],
+//     m: Message
+//   ): Boolean = {
+//     require(
+//       !collectWSsList(messages, channels).contains(m)
+//     )
+//     
+//     otherActor match {
+//       case Nil() => true
+//       case Cons(x,xs) => 
+//         theoremProp8(channels, messages, x, m) &&
+//         !collectNeighbour(x, channels, messages).contains(m) &&
+//         broadcastProp8(channels, messages, xs, m) &&
+//         otherActorProp8(channels, messages, otherActor, m)
+//     }
+//     
+//   }holds
+//   
+//   def updateBroadcastProp8(
+//     id: ActorId,
+//     channels: List[(ActorId, ActorId)],
+//     messages: MMap[(ActorId,ActorId),List[Message]],
+//     otherActor: List[ActorId],
+//     m: Message
+//   ): Boolean = {
+//     require(
+//       m match {
+//         case WriteSystem(s,i,idM,h) => 
+//           otherActorProp8(channels, messages, otherActor, WriteUser(s,i)) &&
+//           distinctElements[ActorId](otherActor)
+//         case _ => false
+//       }
+//     )
+//     val WriteSystem(s,i,idM,h) = m
+//     
+//     otherActor match {
+//       case Nil() => true
+//       case Cons(x,Nil()) => 
+//         otherActorProp8(channels, add(messages, (id,x), m), Nil(), WriteUser(s,i))
+//       case Cons(x, Cons(y,ys)) => 
+//         addCollectNeighbourWSOther(channels, messages, y, (id,x), WriteUser(s,i), m) &&
+//         !collectNeighbour(y, channels, add(messages, (id,x), m)).contains(WriteUser(s,i)) &&
+//         updateBroadcastProp8(id, channels, messages, Cons(x,ys), m) &&
+//         otherActorProp8(channels, add(messages, (id,x), m), Cons(y,ys), WriteUser(s,i)) &&
+//         true
+//     }    
+// 
+//   }holds
+//   
+//   def prop8(
+//     messages: MMap[(ActorId, ActorId), List[Message]],
+//     states: MMap[ActorId, State],
+//     channels: List[(ActorId, ActorId)]
+//   ): Boolean = {
+//   
+//     channels match {
+//       case Nil() => true
+//       case Cons(x,xs) => 
+//         prop8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState())) &&
+//         prop8(messages, states, xs)
+//     }
+//     
+//   }
+//   
+//   def prop8One(
+//     list: List[Message], 
+//     state: State
+//   ): Boolean = {
+//     
+//     list match {
+//       case Nil() => true
+//       case Cons(m,xs) => 
+//         m match {
+//           case WriteSystem(s,i,_,_) => 
+//             state match {
+//               case CommonState(mem,h) =>
+//                 !h.contains((true,s,i)) &&
+//                 prop8One(xs, state)
+//               case _ => 
+//                 prop8One(xs, state)
+//             }
+//           case _ => 
+//             prop8One(xs, state)
+//         }
+//     }
+//   }
+//   
+
+//   
+
+//  
+//   def addWSProp8(
+//     messages: MMap[(ActorId,ActorId),List[Message]],
+//     states: MMap[ActorId, State],
+//     channels: List[(ActorId, ActorId)],
+//     c: (ActorId,ActorId),
+//     m: Message
+//   ): Boolean = {
+//     require(
+//       prop8(messages, states, channels) &&
+//       {
+//         m match {
+//           case WriteSystem(s,i,_,_) => 
+//             states.getOrElse(c._2, BadState()) match {
+//               case CommonState(mem,h) =>
+//                 !h.contains((true,s,i))
+//               case _ => true
+//             }
+//           case _ => false
+//         }
+//       }
+//     )
+//     val newMessages = add(messages, c, m)
+//     
+//     channels match {
+//       case Nil() => true
+//       case Cons(x,xs) if (x == c) => 
+//         addWSProp8One(messages.getOrElse(x, Nil()), states.getOrElse(x._2, BadState()), m) &&
+//         addWSProp8(messages, states, xs, c, m) &&
+//         prop8(newMessages, states, channels)
+//       case Cons(x, xs) => 
+//         messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
+//         addWSProp8(messages, states, xs, c, m) &&
+//         prop8(newMessages, states, channels)
+//     }
+//     
+//   }holds
+//   
+//   def addWSProp8One(
+//     list: List[Message], 
+//     state: State, 
+//     m: Message
+//   ): Boolean = {
+//     require(
+//       m match {
+//         case WriteSystem(s,i,_,_) => 
+//           state match {
+//             case CommonState(mem,h) => 
+//               prop8One(list, state) &&
+//               !h.contains((true,s,i))
+//             case _ =>   
+//               prop8One(list, state)
+//           }
+//         case _ => false
+//       }
+//     )
+// 
+//     list match {
+//       case Nil() => prop8One(list :+ m, state)
+//       case Cons(x,xs) =>  
+//         addWSProp8One(xs, state, m) &&
+//         prop8One(list :+ m, state)
+//     }
+//     
+//   }holds
 }
