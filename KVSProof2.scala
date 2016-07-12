@@ -782,58 +782,58 @@ object ProtocolProof2 {
 // adding a WU(id) in C(i,j) there is not id in h_k (for all k)
 
 
-  def allHistoriesContains(
+def allHistoriesContains_aux(
     s: Variable,
     i: BigInt, 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     states: MMap[ActorId, State]
   ): Boolean = {
-    channels match {
+    actors match {
       case Nil() => false
       case Cons(x, xs) => 
-        states.getOrElse(x._2, BadState()) match {
+        states.getOrElse(x, BadState()) match {
           case CommonState(mem,h) => 
             h.contains((true, s, i)) ||
-            allHistoriesContains(s, i, xs, states)
+            allHistoriesContains_aux(s, i, xs, states)
           case _ =>   
-            allHistoriesContains(s,i,xs, states)
+            allHistoriesContains_aux(s,i,xs, states)
         }
     }
   }
   
-  def notAllHistoriesContainsEmpty(
+  def notAllHistoriesContainsEmpty_aux(
     s: Variable,
     i: BigInt, 
-    channels: List[(ActorId, ActorId)]
+    actors: List[ActorId]
   ): Boolean = {
-    channels match {
+    actors match {
       case Nil() => true
       case Cons(x, xs) => 
-        init_states.getOrElse(x._2, BadState()) match {
+        init_states.getOrElse(x, BadState()) match {
           case CommonState(mem,h) => 
             h.isEmpty &&
             !h.contains((true, s, i)) &&
-            notAllHistoriesContainsEmpty(s, i, xs) &&
-            !allHistoriesContains(s,i,channels, init_states) &&
+            notAllHistoriesContainsEmpty_aux(s, i, xs) &&
+            !allHistoriesContains_aux(s,i,actors, init_states) &&
             true
           case _ => 
-            notAllHistoriesContainsEmpty(s,i,xs) && 
-            !allHistoriesContains(s,i,channels, init_states) &&
+            notAllHistoriesContainsEmpty_aux(s,i,xs) && 
+            !allHistoriesContains_aux(s,i,actors, init_states) &&
             true
         }
     }
   }holds
   
-  def updateSystemAllHistoriesContains(
+  def updateSystemAllHistoriesContains_aux(
     s: Variable,
     i: BigInt, 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     states: MMap[ActorId, State], 
     id: ActorId, 
     x: Variable, v: BigInt
   ): Boolean = {
     require(
-      !allHistoriesContains(s, i, channels, states) &&
+      !allHistoriesContains_aux(s, i, actors, states) &&
       {
         states.getOrElse(id, BadState()) match {
           case CommonState(mem, h) => true
@@ -845,32 +845,32 @@ object ProtocolProof2 {
     val CommonState(mem, h) = states.getOrElse(id, BadState())
     val newStates = states.updated(id, CommonState(mem.updated(x,v),h++Set((true,x,v))))
     
-    channels match {
+    actors match {
       case Nil() => true
-      case Cons(d,ds) if (d._2 == id) => 
+      case Cons(d,ds) if (d == id) => 
         !h.contains((true, s, i)) &&
         (s,i) != (x,v) &&
         !(h ++ Set((true,x,v))).contains((true,s,i)) &&
-        updateSystemAllHistoriesContains(s,i,ds, states,  id, x, v) &&
-        !allHistoriesContains(s,i,channels, newStates)
+        updateSystemAllHistoriesContains_aux(s,i,ds, states,  id, x, v) &&
+        !allHistoriesContains_aux(s,i,actors, newStates)
       case Cons(d,ds) => 
-        states.getOrElse(d._2, BadState()) == newStates.getOrElse(d._2, BadState()) &&
-        updateSystemAllHistoriesContains(s,i,ds, states,  id, x, v) &&
-        !allHistoriesContains(s,i,channels, newStates)
+        states.getOrElse(d, BadState()) == newStates.getOrElse(d, BadState()) &&
+        updateSystemAllHistoriesContains_aux(s,i,ds, states,  id, x, v) &&
+        !allHistoriesContains_aux(s,i,actors, newStates)
     }
   
   }holds
   
-  def updateUserAllHistoriesContains(
+  def updateUserAllHistoriesContains_aux(
     s: Variable,
     i: BigInt, 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     states: MMap[ActorId, State], 
     id: ActorId, 
     state: State
   ): Boolean = {
     require(
-      !allHistoriesContains(s,i,channels, states) &&
+      !allHistoriesContains_aux(s,i,actors, states) &&
       {
         state match {
         case UserState(h,c) => true
@@ -880,43 +880,43 @@ object ProtocolProof2 {
     )
     val newStates = states.updated(id, state)
     
-    channels match {
+    actors match {
       case Nil() => true
-      case Cons(x,xs) if (x._2 == id) => 
+      case Cons(x,xs) if (x == id) => 
         newStates.getOrElse(id, BadState()) match {
           case UserState(h,c) => 
-            updateUserAllHistoriesContains(s,i,xs, states, id, state) &&
-            !allHistoriesContains(s,i,channels, newStates)
+            updateUserAllHistoriesContains_aux(s,i,xs, states, id, state) &&
+            !allHistoriesContains_aux(s,i,actors, newStates)
           case _ => false
         }
       case Cons(x,xs) =>  
-        states.getOrElse(x._2, BadState()) == newStates.getOrElse(x._2, BadState()) &&
-        updateUserAllHistoriesContains(s,i,xs, states,  id, state) &&
-        !allHistoriesContains(s,i,channels, newStates)
+        states.getOrElse(x, BadState()) == newStates.getOrElse(x, BadState()) &&
+        updateUserAllHistoriesContains_aux(s,i,xs, states,  id, state) &&
+        !allHistoriesContains_aux(s,i,actors, newStates)
     }
   
   }holds
   
-  
-  def prop4_aux(
+  def prop4(
     messages: MMap[(ActorId, ActorId), List[Message]],
     states: MMap[ActorId, State],
-    channels: List[(ActorId, ActorId)]
+    channels: List[(ActorId, ActorId)], 
+    actors: List[ActorId]
   ): Boolean = {
   
     channels match {
       case Nil() => true
       case Cons(x,xs) => 
-        prop4One_aux(messages.getOrElse(x, Nil()), states, channels) &&
-        prop4_aux(messages, states, xs)
+        prop4One(messages.getOrElse(x, Nil()), states, actors) &&
+        prop4(messages, states, xs, actors)
     }
     
   }
   
-  def prop4One_aux(
+  def prop4One(
     list: List[Message], 
     states: MMap[ActorId, State],
-    channels: List[(ActorId, ActorId)]
+    actors: List[ActorId]
   ): Boolean = {
     
     list match {
@@ -924,18 +924,19 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(s,i) => 
-            !allHistoriesContains(s, i, channels, states) &&
-            prop4One_aux(xs, states, channels)
+            !allHistoriesContains_aux(s, i, actors, states) &&
+            prop4One(xs, states, actors)
           case _ => 
-            prop4One_aux(xs, states, channels)
+            prop4One(xs, states, actors)
         }
     }
   }
   
-  def initProp4_aux(
+  def initProp4(
    messages: MMap[(ActorId, ActorId), List[Message]],
    channels: List[(ActorId, ActorId)], 
-   states: MMap[ActorId, State]
+   states: MMap[ActorId, State], 
+   actors: List[ActorId]
   ): Boolean = {
     require(
       collectWUsList(messages, channels).isEmpty
@@ -945,15 +946,15 @@ object ProtocolProof2 {
       case Nil() => true
       case Cons(x,xs) => 
         collectWUs(messages.getOrElse(x, Nil())).isEmpty &&
-        initProp4One_aux(messages.getOrElse(x, Nil()), channels, states) &&
-        initProp4_aux(messages, xs, states) &&
-        prop4_aux(messages, states, channels)
+        initProp4One(messages.getOrElse(x, Nil()), actors, states) &&
+        initProp4(messages, xs, states, actors) &&
+        prop4(messages, states, channels, actors)
     }
   }holds
   
-  def initProp4One_aux(
+  def initProp4One(
     list: List[Message],
-    channels: List[(ActorId, ActorId)], 
+    actors: List[ActorId], 
     states: MMap[ActorId, State]
   ): Boolean = {
     require(
@@ -966,58 +967,59 @@ object ProtocolProof2 {
         m match {
           case WriteUser(s,i) => false
           case _ => 
-            initProp4One_aux(xs, channels, states) &&
-            prop4One_aux(list, states, channels)
+            initProp4One(xs, actors, states) &&
+            prop4One(list, states, actors)
         }
     }
   
   }holds
   
-  def addWUprop4One_aux(
+  def addWUprop4One(
     list: List[Message],
     m: Message,
-    channels: List[(ActorId, ActorId)], 
+    actors: List[ActorId], 
     states: MMap[ActorId, State]
   ): Boolean = {
     require(
-      prop4One_aux(list, states, channels) &&
+      prop4One(list, states, actors) &&
       isWU(m) && 
       {
         val WriteUser(s,i) = m
-        !allHistoriesContains(s,i,channels, states)
+        !allHistoriesContains_aux(s,i,actors, states)
       }
     )
     
     list match {
       case Nil() => 
-        prop4One_aux(list :+ m, states, channels)
+        prop4One(list :+ m, states, actors)
       case Cons(x,xs) => 
         x match {
           case WriteUser(s,i) => 
-            !allHistoriesContains(s,i,channels, states) &&
-            addWUprop4One_aux(xs, m, channels, states) &&
-            prop4One_aux(list :+ m, states, channels)
+            !allHistoriesContains_aux(s,i,actors, states) &&
+            addWUprop4One(xs, m, actors, states) &&
+            prop4One(list :+ m, states, actors)
           case _ => 
-            addWUprop4One_aux(xs, m, channels, states) &&
-            prop4One_aux(list :+ m, states, channels)
+            addWUprop4One(xs, m, actors, states) &&
+            prop4One(list :+ m, states, actors)
         }
     }
     
   }holds
   
-  def addWUprop4_aux(
+  def addWUprop4(
     messages: MMap[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     states: MMap[ActorId, State],
     c: (ActorId, ActorId),
-    m: Message
+    m: Message, 
+    actors: List[ActorId]
   ): Boolean = {
     require(
-      prop4_aux(messages, states, channels) &&
+      prop4(messages, states, channels, actors) &&
       isWU(m) && 
       {
         val WriteUser(s,i) = m
-        !allHistoriesContains(s,i,channels, states)
+        !allHistoriesContains_aux(s,i,actors, states)
       }
     )
     val newMessages = add(messages, c, m)
@@ -1025,56 +1027,57 @@ object ProtocolProof2 {
     channels match {
       case Nil() => true
       case Cons(x,xs) if (x == c) => 
-        addWUprop4One_aux(messages.getOrElse(x, Nil()), m, channels, states) &&
-        prop4One_aux(messages.getOrElse(x, Nil()), states, channels) &&
-        addWUprop4_aux(messages, xs, states, c, m) &&
-        prop4_aux(newMessages, states, channels) &&
+        addWUprop4One(messages.getOrElse(x, Nil()), m, actors, states) &&
+        prop4One(messages.getOrElse(x, Nil()), states, actors) &&
+        addWUprop4(messages, xs, states, c, m, actors) &&
+        prop4(newMessages, states, channels, actors) &&
         true
       case Cons(x,xs) =>
         messages.getOrElse(x, Nil()) == newMessages.getOrElse(x, Nil()) &&
-        prop4One_aux(newMessages.getOrElse(x, Nil()), states, channels) &&
-        addWUprop4_aux(messages, xs, states, c, m) &&
-        prop4_aux(newMessages, states, channels) &&
+        prop4One(newMessages.getOrElse(x, Nil()), states, actors) &&
+        addWUprop4(messages, xs, states, c, m, actors) &&
+        prop4(newMessages, states, channels, actors) &&
         true
     }
   
   }holds
   
-  def addOtherProp4One_aux(
+  def addOtherProp4One(
     list: List[Message], 
     m: Message, 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     states: MMap[ActorId, State]
   ): Boolean = {
     require(
       !isWU(m) &&
-      prop4One_aux(list, states, channels)
+      prop4One(list, states, actors)
     )
     
     list match {
-      case Nil() => prop4One_aux(list :+ m, states, channels)
+      case Nil() => prop4One(list :+ m, states, actors)
       case Cons(x,xs) => 
         x match {
           case WriteUser(s,i) => 
-            !allHistoriesContains(s,i,channels, states) &&
-            addOtherProp4One_aux(xs, m, channels, states) &&
-            prop4One_aux(list :+ m, states, channels)
+            !allHistoriesContains_aux(s,i,actors, states) &&
+            addOtherProp4One(xs, m, actors, states) &&
+            prop4One(list :+ m, states, actors)
           case _ => 
-            addOtherProp4One_aux(xs, m, channels, states)
-            prop4One_aux(list :+ m, states, channels)
+            addOtherProp4One(xs, m, actors, states)
+            prop4One(list :+ m, states, actors)
         }
     }
   }holds
   
-  def addOtherProp4_aux(
+  def addOtherProp4(
     messages: MMap[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     states: MMap[ActorId, State],
     c: (ActorId, ActorId),
-    m: Message
+    m: Message,
+    actors: List[ActorId]
   ): Boolean = {
     require(
-      prop4_aux(messages, states, channels) &&
+      prop4(messages, states, channels, actors) &&
       !isWU(m)
     )
     val newMessages = add(messages, c, m)
@@ -1082,28 +1085,28 @@ object ProtocolProof2 {
     channels match {
       case Nil() => true
       case Cons(x,xs) if (c == x) => 
-        addOtherProp4One_aux(messages.getOrElse(x, Nil()), m, channels, states) &&
-        prop4One_aux(newMessages.getOrElse(x, Nil()), states, channels) &&
-        addOtherProp4_aux(messages, xs, states, c, m) &&
-        prop4_aux(newMessages, states, channels)
+        addOtherProp4One(messages.getOrElse(x, Nil()), m, actors, states) &&
+        prop4One(newMessages.getOrElse(x, Nil()), states, actors) &&
+        addOtherProp4(messages, xs, states, c, m, actors) &&
+        prop4(newMessages, states, channels, actors)
       case Cons(x,xs) => 
         newMessages.getOrElse(x, Nil()) == messages.getOrElse(x, Nil()) &&
-        prop4One_aux(newMessages.getOrElse(x, Nil()), states, channels) &&
-        addOtherProp4_aux(messages, xs, states, c, m) &&
-        prop4_aux(newMessages, states, channels)
+        prop4One(newMessages.getOrElse(x, Nil()), states, actors) &&
+        addOtherProp4(messages, xs, states, c, m, actors) &&
+        prop4(newMessages, states, channels, actors)
     }
   
   }holds
   
-  def updateStateUserProp4One_aux(
+  def updateStateUserProp4One(
     list: List[Message], 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     id: ActorId,
     states: MMap[ActorId, State],
     newState: State
   ): Boolean = {
     require(
-      prop4One_aux(list, states, channels) &&
+      prop4One(list, states, actors) &&
       {
         newState match {
         case UserState(h,c) => true
@@ -1118,26 +1121,27 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(s,i) => 
-            updateUserAllHistoriesContains(s,i,channels, states, id, newState) &&
-            updateStateUserProp4One_aux(xs, channels, id, states, newState) &&
-            prop4One_aux(list, newStates, channels)
+            updateUserAllHistoriesContains_aux(s,i,actors, states, id, newState) &&
+            updateStateUserProp4One(xs, actors, id, states, newState) &&
+            prop4One(list, newStates, actors)
           case _ => 
-            updateStateUserProp4One_aux(xs, channels, id, states, newState) &&
-            prop4One_aux(list, newStates, channels)
+            updateStateUserProp4One(xs, actors, id, states, newState) &&
+            prop4One(list, newStates, actors)
         }
     }
   
   }holds
   
-  def updateStateUserProp4_aux(
+  def updateStateUserProp4(
     messages: MMap[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     states: MMap[ActorId, State],
     id: ActorId,
-    m: State
+    m: State, 
+    actors: List[ActorId]
   ): Boolean = {
     require(
-      prop4_aux(messages, states, channels) &&
+      prop4(messages, states, channels, actors) &&
       {
         m match {
           case UserState(h,c) => true
@@ -1150,17 +1154,17 @@ object ProtocolProof2 {
     channels match {
       case Nil() => true
       case Cons(x,xs) => 
-        updateStateUserProp4One_aux(messages.getOrElse(x, Nil()), channels, id, states, m) &&
-        prop4One_aux(messages.getOrElse(x, Nil()), states, channels) &&
-        updateStateUserProp4_aux(messages, xs, states, id, m) &&
-        prop4_aux(messages, newStates, channels)
+        updateStateUserProp4One(messages.getOrElse(x, Nil()), actors, id, states, m) &&
+        prop4One(messages.getOrElse(x, Nil()), states, actors) &&
+        updateStateUserProp4(messages, xs, states, id, m, actors) &&
+        prop4(messages, newStates, channels, actors)
     }
     
   }holds
   
-  def updateStateSystemProp4One_aux(
+  def updateStateSystemProp4One(
     list: List[Message], 
-    channels: List[(ActorId, ActorId)],
+    actors: List[ActorId],
     states: MMap[ActorId, State],
     id: ActorId,
     s: Variable, 
@@ -1168,7 +1172,7 @@ object ProtocolProof2 {
   ): Boolean = {
     require(
       !list.contains(WriteUser(s,i)) &&
-      prop4One_aux(list, states, channels) &&
+      prop4One(list, states, actors) &&
       {
         states.getOrElse(id, BadState()) match {
           case CommonState(mem, h) => true
@@ -1184,28 +1188,29 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(x,v) if ((x,v) != (s,i))=> 
-            updateSystemAllHistoriesContains(x,v,channels,states,id,s,i) &&
-            updateStateSystemProp4One_aux(xs,channels,states, id,s,i) &&
-            prop4One_aux(list, newStates, channels)
+            updateSystemAllHistoriesContains_aux(x,v,actors,states,id,s,i) &&
+            updateStateSystemProp4One(xs,actors,states, id,s,i) &&
+            prop4One(list, newStates, actors)
           case WriteUser(x,v) => false 
           case _ => 
-            updateStateSystemProp4One_aux(xs,channels,states, id,s,i) &&
-            prop4One_aux(list, newStates, channels)
+            updateStateSystemProp4One(xs,actors,states, id,s,i) &&
+            prop4One(list, newStates, actors)
         }
     }
     
   }holds
   
-  def updateStateSystemProp4_aux(
+  def updateStateSystemProp4(
     messages: MMap[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     states: MMap[ActorId, State],
     id: ActorId,
     s: Variable, 
-    i: BigInt
+    i: BigInt,
+    actors: List[ActorId]
   ): Boolean = {
     require(
-      prop4_aux(messages, states, channels) &&
+      prop4(messages, states, channels, actors) &&
       !collectWUsList(messages, channels).contains(WriteUser(s,i)) &&
       {
         states.getOrElse(id, BadState()) match {
@@ -1228,42 +1233,44 @@ object ProtocolProof2 {
           }
           else {
             !messages.getOrElse(x,Nil()).contains(WriteUser(s,i)) &&
-            updateStateSystemProp4One_aux(messages.getOrElse(x, Nil()), channels, states, id, s, i) &&
-            prop4One_aux(messages.getOrElse(x, Nil()),states, channels) &&
-            updateStateSystemProp4_aux(messages, xs, states, id, s, i) &&
-            prop4_aux(messages, newStates, channels)
+            updateStateSystemProp4One(messages.getOrElse(x, Nil()), actors, states, id, s, i) &&
+            prop4One(messages.getOrElse(x, Nil()),states, actors) &&
+            updateStateSystemProp4(messages, xs, states, id, s, i, actors) &&
+            prop4(messages, newStates, channels, actors)
           }
         }
     }
   
   }holds
   
-  def inductInitProp4_aux(
+  def inductInitProp4(
     initList: List[(ActorId,Message)],
-    states: MMap[ActorId, State]
+    states: MMap[ActorId, State], 
+    actors: List[ActorId]
   ): Boolean = {
     initList match {
       case Nil() => true
       case Cons((id,m),xs) => 
         m match {
           case WriteUser(s,i) => 
-            !allHistoriesContains(s,i,channels, states) &&
-            inductInitProp4_aux(xs, states)
+            !allHistoriesContains_aux(s,i,actors, states) &&
+            inductInitProp4(xs, states, actors)
           case _ =>
-            inductInitProp4_aux(xs, states) 
+            inductInitProp4(xs, states, actors) 
         }
     }
   }
   
-  def updateInductInitProp4_aux(
+  def updateInductInitProp4(
     initList: List[(ActorId,Message)],
     states: MMap[ActorId, State], 
-    messages: MMap[(ActorId,ActorId),List[Message]]
+    messages: MMap[(ActorId,ActorId),List[Message]], 
+    actors: List[ActorId]
   ): Boolean = {
     require(
       areWU(initList) &&
       differentInitMessage(initList, messages) &&
-      inductInitProp4_aux(initList, states) &&
+      inductInitProp4(initList, states, actors) &&
       {
         initList match {
           case Cons((id,WriteUser(s,i)),xs) => true
@@ -1286,48 +1293,50 @@ object ProtocolProof2 {
       case Cons((a,b), Nil()) => 
         b match {
           case WriteUser(s,i) => 
-            inductInitProp4_aux(Nil(), newStates)
+            inductInitProp4(Nil(), newStates, actors)
         }   
       case Cons((a,b),Cons((e,d), ys)) => 
         d match {
           case WriteUser(s,i) => 
-            !allHistoriesContains(s,i,channels, states) &&
-            updateUserAllHistoriesContains(s,i,channels, states, a4, UserState(Cons(((true, x,v),Set()), h), c)) &&
-            !allHistoriesContains(s,i,channels, newStates) &&
-            updateInductInitProp4_aux(Cons((a,b), ys), states, messages) &&
-            inductInitProp4_aux(Cons((e,d), ys), newStates)
+            !allHistoriesContains_aux(s,i,actors, states) &&
+            updateUserAllHistoriesContains_aux(s,i,actors, states, a4, UserState(Cons(((true, x,v),Set()), h), c)) &&
+            !allHistoriesContains_aux(s,i,actors, newStates) &&
+            updateInductInitProp4(Cons((a,b), ys), states, messages, actors) &&
+            inductInitProp4(Cons((e,d), ys), newStates, actors)
         }   
     }
   
   }holds
   
-  def inductInitProp4Empty_aux(
-    initList: List[(ActorId,Message)]
+  def inductInitProp4Empty(
+    initList: List[(ActorId,Message)], 
+    actors: List[ActorId]
   ): Boolean = {
     initList match {
       case Nil() => true
       case Cons((id,m),xs) =>
         m match {
           case WriteUser(s,i) => 
-            notAllHistoriesContainsEmpty(s,i,channels) &&
-            inductInitProp4Empty_aux(xs) &&
-            inductInitProp4_aux(xs, init_states)
+            notAllHistoriesContainsEmpty_aux(s,i,actors) &&
+            inductInitProp4Empty(xs, actors) &&
+            inductInitProp4(xs, init_states,actors)
           case _ =>
-            inductInitProp4Empty_aux(xs)
-            inductInitProp4_aux(xs, init_states) 
+            inductInitProp4Empty(xs, actors)
+            inductInitProp4(xs, init_states, actors) 
         }
     }
   
   }holds
   
-  def removeProp4_aux(
+  def removeProp4(
     messages: MMap[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     states: MMap[ActorId, State],
-    c: (ActorId, ActorId)
+    c: (ActorId, ActorId), 
+    actors: List[ActorId]
   ): Boolean = {
     require(
-      prop4_aux(messages, states, channels) &&
+      prop4(messages, states, channels, actors) &&
       !messages.getOrElse(c, Nil()).isEmpty
     )
     val Cons(m,chan) = messages.getOrElse(c, Nil())
@@ -1336,18 +1345,17 @@ object ProtocolProof2 {
     channels match {
       case Nil() => true
       case Cons(x,xs) if (x == c) =>
-        prop4One_aux(newMessages.getOrElse(x, Nil()), states, channels) &&
-        removeProp4_aux(messages, xs, states, c) &&
-        prop4_aux(newMessages, states, channels)
+        prop4One(newMessages.getOrElse(x, Nil()), states, actors) &&
+        removeProp4(messages, xs, states, c, actors) &&
+        prop4(newMessages, states, channels, actors)
       case Cons(x,xs) =>
         newMessages.getOrElse(x, Nil()) == messages.getOrElse(x, Nil()) &&
-        prop4One_aux(newMessages.getOrElse(x, Nil()), states, channels) &&
-        removeProp4_aux(messages, xs, states, c) &&
-        prop4_aux(newMessages, states, channels)
+        prop4One(newMessages.getOrElse(x, Nil()), states, actors) &&
+        removeProp4(messages, xs, states, c, actors) &&
+        prop4(newMessages, states, channels, actors)
     }
     
   }holds
-  
   
   
   
