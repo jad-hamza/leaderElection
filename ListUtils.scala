@@ -1,6 +1,6 @@
 package distribution
 
-import leon.collection._
+import stainless.collection._
 
 object ListUtils {
 

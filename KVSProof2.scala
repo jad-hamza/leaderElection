@@ -5,11 +5,11 @@ import FifoNetwork._
 import Networking._
 import Protocol._
 
-import leon.lang._
-import leon.collection._
-import leon.proof._
-import leon.annotation._
-import leon.lang.synthesis._
+import stainless.lang._
+import stainless.collection._
+import stainless.proof._
+import stainless.annotation._
+import stainless.lang.synthesis._
 
 import scala.language.postfixOps
 
@@ -26,7 +26,7 @@ object ProtocolProof2 {
 // WU(id) in C(i,j) => not WW(id) in C(k,l)
 
   def prop6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)]
   ): Boolean = {
     (collectWUsList(messages, channels) & collectWWsList(messages,channels)).isEmpty
@@ -41,7 +41,7 @@ object ProtocolProof2 {
   }
   
   def collectWWsList(
-    messages: MMap[(ActorId,ActorId),List[Message]], 
+    messages: Map[(ActorId,ActorId),List[Message]], 
     channels: List[(ActorId,ActorId)]
   ): Set[Message] = {
     channels match {
@@ -52,7 +52,7 @@ object ProtocolProof2 {
   }
   
   def removeCollectWW(
-    messages: MMap[(ActorId,ActorId),List[Message]], 
+    messages: Map[(ActorId,ActorId),List[Message]], 
     channels: List[(ActorId,ActorId)],
     c: (ActorId,ActorId)
   ): Boolean = {
@@ -88,7 +88,7 @@ object ProtocolProof2 {
   }holds
   
   def theorem3WS(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     c: (ActorId, ActorId),
     channels: List[(ActorId, ActorId)],
     m: Message
@@ -107,7 +107,7 @@ object ProtocolProof2 {
   } holds
   
   def removeWSprop6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -157,7 +157,7 @@ object ProtocolProof2 {
   }holds
   
   def theorem3WW(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     c: (ActorId, ActorId),
     channels: List[(ActorId, ActorId)],
     m: Message
@@ -176,7 +176,7 @@ object ProtocolProof2 {
   } holds
   
   def removeWWprop6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -206,7 +206,7 @@ object ProtocolProof2 {
   
   
   def removeAllProp6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -228,7 +228,7 @@ object ProtocolProof2 {
   }holds
   
   def removeProp6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -268,7 +268,7 @@ object ProtocolProof2 {
   } holds
   
   def addCollect3(
-    messages: MMap[(ActorId,ActorId),List[Message]], 
+    messages: Map[(ActorId,ActorId),List[Message]], 
     c: (ActorId,ActorId),
     m: Message, 
     channels: List[(ActorId,ActorId)]
@@ -292,7 +292,7 @@ object ProtocolProof2 {
   } holds
   
   def addOtherProp6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -328,7 +328,7 @@ object ProtocolProof2 {
     collectWWs(l) ++Set(WriteUser(s,i)) == collectWWs(l :+ m)       
   } holds
   
-  def addCollectWW(messages: MMap[(ActorId,ActorId),List[Message]], c: (ActorId,ActorId), m: Message, channels: List[(ActorId,ActorId)]): Boolean = {
+  def addCollectWW(messages: Map[(ActorId,ActorId),List[Message]], c: (ActorId,ActorId), m: Message, channels: List[(ActorId,ActorId)]): Boolean = {
   require({
       m match {
         case WriteWaiting(s,i,id,h) => true 
@@ -356,7 +356,7 @@ object ProtocolProof2 {
   } holds  
   
   def addWWProp6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -380,7 +380,7 @@ object ProtocolProof2 {
   } holds
   
   def addWUprop6(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -409,7 +409,7 @@ object ProtocolProof2 {
 // WS in C(i,j) => not WS in C(i',j)
   def prop7(
     channels: List[(ActorId, ActorId)],
-    messages: MMap[(ActorId,ActorId),List[Message]]
+    messages: Map[(ActorId,ActorId),List[Message]]
   ): Boolean = {
     channels match {
       case Nil() => true
@@ -422,7 +422,7 @@ object ProtocolProof2 {
   def collectNeighbour(
     id: ActorId,
     channels: List[(ActorId, ActorId)],
-    messages: MMap[(ActorId,ActorId),List[Message]]
+    messages: Map[(ActorId,ActorId),List[Message]]
   ): Set[Message] = {
     channels match {
       case Nil() => Set()
@@ -434,7 +434,7 @@ object ProtocolProof2 {
   }
   
   def addWSprop7(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -473,7 +473,7 @@ object ProtocolProof2 {
   
   
   def addCollectNeighbourWS(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     id: ActorId,
     c: (ActorId,ActorId), 
     m: Message, 
@@ -506,7 +506,7 @@ object ProtocolProof2 {
   } holds
   
   def addCollectNeighbour(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     id: ActorId,
     c: (ActorId,ActorId), 
     m: Message, 
@@ -531,7 +531,7 @@ object ProtocolProof2 {
   }holds
   
   def addOtherprop7(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -568,7 +568,7 @@ object ProtocolProof2 {
   }holds
   
   def addProp7(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId, ActorId),
     m: Message
@@ -597,7 +597,7 @@ object ProtocolProof2 {
   
   def removeCollectNeighbour(
     id: ActorId,
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -615,7 +615,7 @@ object ProtocolProof2 {
   }holds
   
   def removeProp7(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -641,7 +641,7 @@ object ProtocolProof2 {
   
   def collectOtherActorProp7(
     otherActor: List[ActorId],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     m: Message
   ): Boolean = {
     otherActor match {
@@ -652,10 +652,10 @@ object ProtocolProof2 {
     }
   }
   
-  def lemmaProp7(
+  def leMaprop7(
     id: ActorId,
     otherActor: List[ActorId],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     s: Variable, i: BigInt
   ): Boolean = {
     require (
@@ -668,7 +668,7 @@ object ProtocolProof2 {
       case Cons(x,xs) => 
         collectOtherActorOneProp7(x,messages,WriteUser(s,i),channels) &&
         !collectNeighbour(x, channels, messages).contains(WriteUser(s,i)) &&
-        lemmaProp7(id, xs, messages, s, i) &&
+        leMaprop7(id, xs, messages, s, i) &&
         collectOtherActorProp7(otherActor, messages, WriteUser(s,i)) &&
         true
     }
@@ -676,7 +676,7 @@ object ProtocolProof2 {
    
   def collectOtherActorOneProp7(
     id: ActorId, 
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     m: Message, 
     channels: List[(ActorId, ActorId)]
   ): Boolean = {
@@ -698,7 +698,7 @@ object ProtocolProof2 {
   }holds
   
   def initProp7(
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     channels: List[(ActorId, ActorId)]
   ): Boolean = {
     require(collectWSsList(messages, channels).isEmpty)
@@ -715,7 +715,7 @@ object ProtocolProof2 {
   def broadcastAckPreInductProp7(
     id: ActorId, 
     otherActor: List[ActorId],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     m: Message
   ): Boolean = {
     require(
@@ -745,7 +745,7 @@ object ProtocolProof2 {
   }holds
   
   def addInduct(
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     c: (ActorId, ActorId),
     id: ActorId,
     m: Message, 
@@ -786,7 +786,7 @@ object ProtocolProof2 {
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     actors match {
       case Nil() => false
@@ -828,7 +828,7 @@ object ProtocolProof2 {
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
-    states: MMap[ActorId, State], 
+    states: Map[ActorId, State], 
     id: ActorId, 
     x: Variable, v: BigInt
   ): Boolean = {
@@ -865,7 +865,7 @@ object ProtocolProof2 {
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
-    states: MMap[ActorId, State], 
+    states: Map[ActorId, State], 
     id: ActorId, 
     state: State
   ): Boolean = {
@@ -898,8 +898,8 @@ object ProtocolProof2 {
   }holds
   
   def prop4(
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    states: MMap[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    states: Map[ActorId, State],
     channels: List[(ActorId, ActorId)], 
     actors: List[ActorId]
   ): Boolean = {
@@ -915,7 +915,7 @@ object ProtocolProof2 {
   
   def prop4One(
     list: List[Message], 
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     actors: List[ActorId]
   ): Boolean = {
     
@@ -933,9 +933,9 @@ object ProtocolProof2 {
   }
   
   def initProp4(
-   messages: MMap[(ActorId, ActorId), List[Message]],
+   messages: Map[(ActorId, ActorId), List[Message]],
    channels: List[(ActorId, ActorId)], 
-   states: MMap[ActorId, State], 
+   states: Map[ActorId, State], 
    actors: List[ActorId]
   ): Boolean = {
     require(
@@ -955,7 +955,7 @@ object ProtocolProof2 {
   def initProp4One(
     list: List[Message],
     actors: List[ActorId], 
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       collectWUs(list).isEmpty
@@ -978,7 +978,7 @@ object ProtocolProof2 {
     list: List[Message],
     m: Message,
     actors: List[ActorId], 
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       prop4One(list, states, actors) &&
@@ -1007,9 +1007,9 @@ object ProtocolProof2 {
   }holds
   
   def addWUprop4(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     c: (ActorId, ActorId),
     m: Message, 
     actors: List[ActorId]
@@ -1046,7 +1046,7 @@ object ProtocolProof2 {
     list: List[Message], 
     m: Message, 
     actors: List[ActorId],
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       !isWU(m) &&
@@ -1069,9 +1069,9 @@ object ProtocolProof2 {
   }holds
   
   def addOtherProp4(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     c: (ActorId, ActorId),
     m: Message,
     actors: List[ActorId]
@@ -1102,7 +1102,7 @@ object ProtocolProof2 {
     list: List[Message], 
     actors: List[ActorId],
     id: ActorId,
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     newState: State
   ): Boolean = {
     require(
@@ -1133,9 +1133,9 @@ object ProtocolProof2 {
   }holds
   
   def updateStateUserProp4(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     id: ActorId,
     m: State, 
     actors: List[ActorId]
@@ -1165,7 +1165,7 @@ object ProtocolProof2 {
   def updateStateSystemProp4One(
     list: List[Message], 
     actors: List[ActorId],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     id: ActorId,
     s: Variable, 
     i: BigInt
@@ -1201,9 +1201,9 @@ object ProtocolProof2 {
   }holds
   
   def updateStateSystemProp4(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     id: ActorId,
     s: Variable, 
     i: BigInt,
@@ -1245,7 +1245,7 @@ object ProtocolProof2 {
   
   def inductInitProp4(
     initList: List[(ActorId,Message)],
-    states: MMap[ActorId, State], 
+    states: Map[ActorId, State], 
     actors: List[ActorId]
   ): Boolean = {
     initList match {
@@ -1263,8 +1263,8 @@ object ProtocolProof2 {
   
   def updateInductInitProp4(
     initList: List[(ActorId,Message)],
-    states: MMap[ActorId, State], 
-    messages: MMap[(ActorId,ActorId),List[Message]], 
+    states: Map[ActorId, State], 
+    messages: Map[(ActorId,ActorId),List[Message]], 
     actors: List[ActorId]
   ): Boolean = {
     require(
@@ -1329,9 +1329,9 @@ object ProtocolProof2 {
   }holds
   
   def removeProp4(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
-    states: MMap[ActorId, State],
+    states: Map[ActorId, State],
     c: (ActorId, ActorId), 
     actors: List[ActorId]
   ): Boolean = {
@@ -1387,7 +1387,7 @@ object ProtocolProof2 {
 // ==> can add WW
 
   def prop9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)]
   ): Boolean = {
     
@@ -1401,7 +1401,7 @@ object ProtocolProof2 {
 
   // (i)
   def removeWSprop9_1(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -1428,10 +1428,10 @@ object ProtocolProof2 {
   
   }holds
   
-  def lemmaProp9(
+  def leMaprop9(
     c: (ActorId,ActorId), 
     channels: List[(ActorId, ActorId)],
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     m: Message
   ): Boolean = {
     require(
@@ -1453,7 +1453,7 @@ object ProtocolProof2 {
         collectWSs(messages.getOrElse(c, Nil())).contains(WriteUser(s,i)) &&
         collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))
       case Cons(x,xs) =>
-        lemmaProp9(c, xs, messages, m) &&
+        leMaprop9(c, xs, messages, m) &&
         collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))
     }
     
@@ -1461,7 +1461,7 @@ object ProtocolProof2 {
   
   // (i) and (ii)
   def removeWSprop9_2(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -1490,7 +1490,7 @@ object ProtocolProof2 {
         !collectNeighbour(c._2, channels, newMessages).contains(WriteUser(s,i)) &&
         true
       case Cons(x,xs) if (x._2 == c._2) => 
-        lemmaProp9(c, channels, messages, WriteSystem(s,i,idM,h)) &&
+        leMaprop9(c, channels, messages, WriteSystem(s,i,idM,h)) &&
         collectNeighbour(c._2, channels, messages).contains(WriteUser(s,i))&&
         !collectWSs(messages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
         !collectWSs(newMessages.getOrElse(x, Nil())).contains(WriteUser(s,i)) &&
@@ -1506,7 +1506,7 @@ object ProtocolProof2 {
   }holds
   
   def addWWProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     id: ActorId,
     m: Message
@@ -1550,7 +1550,7 @@ object ProtocolProof2 {
   }holds
   
   def removeWUProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -1576,7 +1576,7 @@ object ProtocolProof2 {
   }holds
   
   def addWSProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId,ActorId),
     m: Message
@@ -1621,7 +1621,7 @@ object ProtocolProof2 {
   }holds
  
  def addOtherProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId, ActorId)],
     c: (ActorId,ActorId),
     m: Message
@@ -1650,7 +1650,7 @@ object ProtocolProof2 {
   }holds
   
   def removeAllProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -1673,7 +1673,7 @@ object ProtocolProof2 {
   }holds
   
   def removeWWProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     id: ActorId
   ): Boolean = {
@@ -1705,7 +1705,7 @@ object ProtocolProof2 {
   }holds
   
   def removeProp9(
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     channels: List[(ActorId,ActorId)],
     c: (ActorId, ActorId)
   ): Boolean = {
@@ -1737,7 +1737,7 @@ object ProtocolProof2 {
 
   def collectOtherActorProp9(
     otherActor: List[ActorId],
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     m: Message
   ): Boolean = {
     otherActor match {
@@ -1750,7 +1750,7 @@ object ProtocolProof2 {
   
   def lemmaReceiveProp9(
     otherActor: List[ActorId],
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     m: Message
   ): Boolean = {
     require(
@@ -1771,7 +1771,7 @@ object ProtocolProof2 {
   def collectListToOne(
     c: (ActorId, ActorId),
     channels: List[(ActorId, ActorId)],
-    messages: MMap[(ActorId,ActorId),List[Message]],
+    messages: Map[(ActorId,ActorId),List[Message]],
     m: Message
   ): Boolean = {
     require(
@@ -1792,7 +1792,7 @@ object ProtocolProof2 {
   def broadcastAckPreInductProp9(
     myId : ActorId,
     otherActor: List[ActorId],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     m: Message
   ): Boolean = {
     require(
@@ -1827,7 +1827,7 @@ object ProtocolProof2 {
   }holds
   
   def initProp9(
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    messages: Map[(ActorId, ActorId), List[Message]],
     channels: List[(ActorId, ActorId)]
   ): Boolean = {
     require(collectWSsList(messages, channels).isEmpty)

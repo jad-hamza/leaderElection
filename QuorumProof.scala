@@ -1,7 +1,7 @@
 package distribution
 
-import leon.collection._
-import leon.lang._
+import stainless.collection._
+import stainless.lang._
 
 import Networking._
 import FifoNetwork._
@@ -12,9 +12,9 @@ object ProtocolProof {
 
   def networkInvariant(
     param: Parameter,
-    states: MMap[ActorId,State],
-    messages: MMap[(ActorId,ActorId),List[Message]],
-    getActor: MMap[ActorId,Actor]
+    states: Map[ActorId,State],
+    messages: Map[(ActorId,ActorId),List[Message]],
+    getActor: Map[ActorId,Actor]
   ) = {
     true
   }
@@ -27,7 +27,7 @@ object ProtocolProof {
     true
   } holds
 
-  def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]) = {
+  def runActorsPrecondition(p: Parameter, initialActor: Actor, schedule: List[(ActorId,ActorId,Message)]) = {
     true
   }
 
@@ -40,9 +40,9 @@ object ProtocolProof {
     }
   }
 
-  def init_states = MMap(init_states_fun)
-  def init_messages = MMap(init_messages_fun)
-  def init_getActor = MMap(init_getActor_fun)
+  def init_states = Map(init_states_fun)
+  def init_messages = Map(init_messages_fun)
+  def init_getActor = Map(init_getActor_fun)
 
   def makeNetwork(p: Parameter) = {
 

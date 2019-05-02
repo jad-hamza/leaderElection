@@ -7,11 +7,11 @@ import Quantifiers._
 import Protocol._
 import ListUtils._
 
-import leon.lang._
-import leon.collection._
-import leon.proof._
-import leon.annotation._
-import leon.lang.synthesis._
+import stainless.lang._
+import stainless.collection._
+import stainless.proof._
+import stainless.annotation._
+import stainless.lang.synthesis._
 
 import scala.language.postfixOps
 
@@ -32,20 +32,6 @@ object ProtocolProof {
     intForAll2(n, n, distinctSSN_fun(ssns))
   }
 
-  def validGetActor(net: VerifiedNetwork, id: ActorId) = {
-    require(
-      networkInvariant(net.param, net.states, net.messages, net.getActor) &&
-      validId(net, id)
-    )
-
-    val UID(uid) = id
-    val Params(n, starterProcess, ssns) = net.param
-
-    elimForAll(n, getActorDefined(net.getActor), uid) &&
-    net.getActor.contains(id)
-  } holds
-
-
   def validId(net: VerifiedNetwork, id: ActorId) = {
     require(networkInvariant(net.param, net.states, net.messages, net.getActor))
     val UID(uid) = id
@@ -59,7 +45,7 @@ object ProtocolProof {
     */
 
 
-  def getActorDefined(getActor: MMap[ActorId, Actor])(i: BigInt) = {
+  def getActorDefined(getActor: Map[ActorId, Actor])(i: BigInt) = {
     getActor.contains(UID(i)) && getActor(UID(i)).myId == UID(i)
   }
 
@@ -77,7 +63,7 @@ object ProtocolProof {
     */
 
 
-  def statesDefined(states: MMap[ActorId, State]) = {
+  def statesDefined(states: Map[ActorId, State]) = {
     (i: BigInt) => states.contains(UID(i))
   }
 
@@ -89,7 +75,7 @@ object ProtocolProof {
   } holds
 
 
-  def statesStillDefined(n: BigInt, states: MMap[ActorId, State], id: ActorId, s: State): Boolean = {
+  def statesStillDefined(n: BigInt, states: Map[ActorId, State], id: ActorId, s: State): Boolean = {
     require(intForAll(n, statesDefined(states)))
 
     if (n <= 0)
@@ -106,7 +92,7 @@ object ProtocolProof {
     * Invariant stating that communication only happens in rings
     */
 
-  def ringChannels(n: BigInt, messages: MMap[(ActorId, ActorId), List[Message]])(i: BigInt, j: BigInt) = {
+  def ringChannels(n: BigInt, messages: Map[(ActorId, ActorId), List[Message]])(i: BigInt, j: BigInt) = {
     0 <= i && i < n && (messages.contains(UID(i), UID(j)) ==> (j == increment(i, n)))
   }
 
@@ -128,7 +114,7 @@ object ProtocolProof {
   } holds
 
   def stillRingChannels(
-    n: BigInt, m1: BigInt, m2: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m1: BigInt, m2: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
 
     require(
@@ -151,7 +137,7 @@ object ProtocolProof {
     * Invariant stating that each channel contains at most one message
     */
 
-  def smallChannel(n: BigInt, messages: MMap[(ActorId, ActorId), List[Message]])(i: BigInt) = {
+  def smallChannel(n: BigInt, messages: Map[(ActorId, ActorId), List[Message]])(i: BigInt) = {
     0 <= i && i < n && messages.getOrElse((UID(i), UID(increment(i, n))), Nil()).size < 2
   }
 
@@ -168,7 +154,7 @@ object ProtocolProof {
 
 
   def stillSmallChannel(
-    n: BigInt, m: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
     require(
       m <= n &&
@@ -187,7 +173,7 @@ object ProtocolProof {
 
 
   def emptyToSmallChannel(
-    n: BigInt, m: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
     require(
       m <= n &&
@@ -210,7 +196,7 @@ object ProtocolProof {
     * Invariant stating that there is at most channel which is not empty
     */
 
-  def onlyOneChannel(n: BigInt, messages: MMap[(ActorId, ActorId), List[Message]])(i: BigInt, j: BigInt) = {
+  def onlyOneChannel(n: BigInt, messages: Map[(ActorId, ActorId), List[Message]])(i: BigInt, j: BigInt) = {
     0 <= i && i < n &&
     0 <= j && j < n && (
       messages.getOrElse((UID(i), UID(increment(i, n))), Nil()).isEmpty ||
@@ -236,7 +222,7 @@ object ProtocolProof {
   def init_onlyOneChannel(n: BigInt) = init_onlyOneChannel_aux(n, n, n)
 
   def stillOneChannel(
-    n: BigInt, m1: BigInt, m2: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m1: BigInt, m2: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
 
     require(
@@ -257,7 +243,7 @@ object ProtocolProof {
   } holds
 
   def emptyToOneChannel(
-    n: BigInt, m1: BigInt, m2: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m1: BigInt, m2: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
 
     require(
@@ -284,7 +270,7 @@ object ProtocolProof {
     * no one can know the leader
     */
 
-  def noLeaderDuringElection(n: BigInt, states: MMap[ActorId, State], messages: MMap[(ActorId, ActorId), List[Message]]) = {
+  def noLeaderDuringElection(n: BigInt, states: Map[ActorId, State], messages: Map[(ActorId, ActorId), List[Message]]) = {
     require(intForAll(n, statesDefined(states)))
 
 
@@ -315,8 +301,8 @@ object ProtocolProof {
 
   def stillnoLeaderDuringElection(
     n: BigInt, u: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt, tt: List[Message]): Boolean = {
 
     require(
@@ -347,7 +333,7 @@ object ProtocolProof {
     * the identity
     */
 
-  def onlyOneLeader(n: BigInt, states: MMap[ActorId, State]) = {
+  def onlyOneLeader(n: BigInt, states: Map[ActorId, State]) = {
     require(intForAll(n, statesDefined(states)))
 
     (i: BigInt, j: BigInt) => {
@@ -367,7 +353,7 @@ object ProtocolProof {
     */
 
 
-  //   def everyOneParticipated(n: BigInt, states: MMap[ActorId, State], messages: MMap[(ActorId, ActorId), List[Message]]) = {
+  //   def everyOneParticipated(n: BigInt, states: Map[ActorId, State], messages: Map[(ActorId, ActorId), List[Message]]) = {
   //     require(intForAll(n, statesDefined(states)))
   //
   //
@@ -387,7 +373,7 @@ object ProtocolProof {
     * Invariant stating that ssn's are unique
     */
 
-  def distinctSSN(n: BigInt, getActor: MMap[ActorId, Actor]) = {
+  def distinctSSN(n: BigInt, getActor: Map[ActorId, Actor]) = {
     require(intForAll(n, getActorDefined(getActor)))
 
     (i: BigInt, j: BigInt) =>
@@ -431,7 +417,7 @@ object ProtocolProof {
     * Property (not invariant) stating that all channels are empty
     */
 
-  def emptyChannel(n: BigInt, messages: MMap[(ActorId, ActorId), List[Message]])(i: BigInt) = {
+  def emptyChannel(n: BigInt, messages: Map[(ActorId, ActorId), List[Message]])(i: BigInt) = {
     0 <= i && i < n && messages.getOrElse((UID(i), UID(increment(i, n))), Nil()).isEmpty
   }
 
@@ -448,7 +434,7 @@ object ProtocolProof {
 
 
   def channelsBecomeEmpty(
-    n: BigInt, m: BigInt, messages: MMap[(ActorId, ActorId), List[Message]],
+    n: BigInt, m: BigInt, messages: Map[(ActorId, ActorId), List[Message]],
     usender: BigInt, ureceiver: BigInt): Boolean = {
     require(
       intForAll2(n, n, onlyOneChannel(n, messages)) &&
@@ -478,7 +464,7 @@ object ProtocolProof {
     * Property stating that there is no leader (yet)
     */
 
-  def noLeader(n: BigInt, states: MMap[ActorId, State]) = {
+  def noLeader(n: BigInt, states: Map[ActorId, State]) = {
     require(intForAll(n, statesDefined(states)))
 
     (i: BigInt) =>
@@ -499,7 +485,7 @@ object ProtocolProof {
   def init_noLeader(n: BigInt) = init_noLeader_aux(n, n)
 
 
-  def stillNoLeader_aux(n: BigInt, u: BigInt, states: MMap[ActorId, State], id: BigInt, s: State): Boolean = {
+  def stillNoLeader_aux(n: BigInt, u: BigInt, states: Map[ActorId, State], id: BigInt, s: State): Boolean = {
     require(
       intForAll(n, statesDefined(states)) &&
       intForAll(n, noLeader(n, states)) &&
@@ -518,7 +504,7 @@ object ProtocolProof {
       intForAll(u, noLeader(n, states.updated(UID(id), s)))
   } holds
 
-  def stillNoLeader(n: BigInt, states: MMap[ActorId, State], id: BigInt, s: State) = {
+  def stillNoLeader(n: BigInt, states: Map[ActorId, State], id: BigInt, s: State) = {
     require(
       intForAll(n, statesDefined(states)) &&
       intForAll(n, noLeader(n, states)) &&
@@ -531,8 +517,8 @@ object ProtocolProof {
 
   def noLeaderImpliesNoLeaderDuringElection_aux(
     n: BigInt, u: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]
   ): Boolean = {
     require(
       0 <= n && u <= n &&
@@ -551,8 +537,8 @@ object ProtocolProof {
 
   def noLeaderImpliesNoLeaderDuringElection(
     n: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]
   ) = {
     require(
       0 <= n &&
@@ -565,8 +551,8 @@ object ProtocolProof {
 
   def noElectionImpliesNoLeaderDuringElection_aux(
     n: BigInt, u: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]
   ): Boolean = {
     require(
       0 <= n && u <= n &&
@@ -583,8 +569,8 @@ object ProtocolProof {
 
   def noElectionImpliesNoLeaderDuringElection(
     n: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]
   ): Boolean = {
     require(
       0 <= n &&
@@ -597,8 +583,8 @@ object ProtocolProof {
 
   def electionImpliesNoLeader_aux(
     n: BigInt, u: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]): Boolean = {
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]): Boolean = {
     require(
       n >= 0 && u <= n &&
       intForAll(n, statesDefined(states)) &&
@@ -614,7 +600,7 @@ object ProtocolProof {
       intForAll(u, noLeader(n, states))
   } holds
 
-  def electionImpliesNoLeader(n: BigInt, states: MMap[ActorId, State], messages: MMap[(ActorId, ActorId), List[Message]]) = {
+  def electionImpliesNoLeader(n: BigInt, states: Map[ActorId, State], messages: Map[(ActorId, ActorId), List[Message]]) = {
     require(
       n >= 0 &&
       intForAll(n, statesDefined(states)) &&
@@ -641,13 +627,13 @@ object ProtocolProof {
 
   def init_messages_fun(ids: (ActorId, ActorId)): Option[List[Message]] = None()
 
-  val init_states = MMap(init_states_fun)
-  val init_messages = MMap(init_messages_fun)
+  val init_states = Map(init_states_fun)
+  val init_messages = Map(init_messages_fun)
 
   def init_getActor(ssns: BigInt => BigInt) = {
     require(true)
 
-    MMap(init_getActor_fun(ssns))
+    Map(init_getActor_fun(ssns))
   }
 
 
@@ -704,7 +690,7 @@ object ProtocolProof {
     increment(j, n) == i
   } holds
 
-  def maxGreater(n: BigInt, i: BigInt, j: BigInt, k: BigInt, getActor: MMap[ActorId, Actor]): Boolean = {
+  def maxGreater(n: BigInt, i: BigInt, j: BigInt, k: BigInt, getActor: Map[ActorId, Actor]): Boolean = {
     require(
       intForAll(n, getActorDefined(getActor)) &&
       inBetween(n, i, j, k) && elimForAll(n, getActorDefined(getActor), k))
@@ -718,7 +704,7 @@ object ProtocolProof {
       ssn <= collectMaxSSN(n, i, j, getActor)
   } holds
 
-  def maxExists(n: BigInt, i: BigInt, j: BigInt, getActor: MMap[ActorId, Actor]): BigInt = {
+  def maxExists(n: BigInt, i: BigInt, j: BigInt, getActor: Map[ActorId, Actor]): BigInt = {
                                                                                              require(
                                                                                                0 <= i && i < n &&
                                                                                                0 <= j && j < n &&
@@ -755,8 +741,8 @@ object ProtocolProof {
   def electingMax(
     n: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]) = {
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]) = {
 
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -806,8 +792,8 @@ object ProtocolProof {
   def emptyChannelsImplyElectingMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]
   ): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -828,7 +814,7 @@ object ProtocolProof {
 
   def max(i: BigInt, j: BigInt) = if (i > j) i else j
 
-  def collectMaxSSN(n: BigInt, from: BigInt, to: BigInt, getActor: MMap[ActorId, Actor]): BigInt = {
+  def collectMaxSSN(n: BigInt, from: BigInt, to: BigInt, getActor: Map[ActorId, Actor]): BigInt = {
     require(
       0 <= from && from < n &&
       0 <= to && to < n &&
@@ -856,7 +842,7 @@ object ProtocolProof {
     n: BigInt,
     starterProcess: BigInt,
     usender: BigInt,
-    getActor: MMap[ActorId, Actor]): Boolean = {
+    getActor: Map[ActorId, Actor]): Boolean = {
 
     require {
       0 <= starterProcess && starterProcess < n &&
@@ -879,8 +865,8 @@ object ProtocolProof {
   def noElectionImpliesElectingMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]
   ): Boolean = {
     require(
       m <= n &&
@@ -907,8 +893,8 @@ object ProtocolProof {
   def stillElectingMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     myuid: BigInt,
     value: BigInt): Boolean = {
     require(
@@ -937,7 +923,7 @@ object ProtocolProof {
     * Invariant about participant state
     */
 
-  def isParticipant(n: BigInt, states: MMap[ActorId, State]) = {
+  def isParticipant(n: BigInt, states: Map[ActorId, State]) = {
     require(intForAll(n, statesDefined(states)))
 
     (i: BigInt) =>
@@ -950,7 +936,7 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     myuid: BigInt,
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -977,7 +963,7 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     myuid: BigInt,
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -996,7 +982,7 @@ object ProtocolProof {
     n: BigInt,
     starterProcess: BigInt,
     usender: BigInt,
-    states: MMap[ActorId, State]
+    states: Map[ActorId, State]
   ): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -1019,8 +1005,8 @@ object ProtocolProof {
   def electedMax(
     n: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]) = {
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]) = {
 
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -1069,8 +1055,8 @@ object ProtocolProof {
   def emptyChannelsImplyElectedMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]
   ): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -1091,8 +1077,8 @@ object ProtocolProof {
   def noElectedImpliesElectedMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor]
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor]
   ): Boolean = {
     require(
       m <= n &&
@@ -1119,8 +1105,8 @@ object ProtocolProof {
   def stillElectedMax(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     myuid: BigInt,
     value: BigInt): Boolean = {
     require(
@@ -1146,7 +1132,7 @@ object ProtocolProof {
     *
     */
 
-  def substitute(n: BigInt, starterProcess: BigInt, usender: BigInt, states1: MMap[ActorId, State], states2: MMap[ActorId, State]) = {
+  def substitute(n: BigInt, starterProcess: BigInt, usender: BigInt, states1: Map[ActorId, State], states2: Map[ActorId, State]) = {
     require(
       0 <= starterProcess && starterProcess < n &&
       0 <= usender && usender < n &&
@@ -1164,7 +1150,7 @@ object ProtocolProof {
     * i.e. ssn is the maximum of all SSNs of Actors
     */
 
-  def knowTrueLeader(n: BigInt, starterProcess: BigInt, states: MMap[ActorId,State], getActor: MMap[ActorId,Actor]) = {
+  def knowTrueLeader(n: BigInt, starterProcess: BigInt, states: Map[ActorId,State], getActor: Map[ActorId,Actor]) = {
     require(
       0 <= starterProcess && starterProcess < n &&
       intForAll(n, statesDefined(states)) &&
@@ -1184,8 +1170,8 @@ object ProtocolProof {
   def noLeaderImpliesknowTrueLeader_aux(
     n: BigInt, u: BigInt,
     starterProcess: BigInt,
-    states: MMap[ActorId, State],
-    getActor: MMap[ActorId, Actor]
+    states: Map[ActorId, State],
+    getActor: Map[ActorId, Actor]
   ): Boolean = {
     require(
       0 <= n && u <= n &&
@@ -1203,7 +1189,7 @@ object ProtocolProof {
       intForAll(u, knowTrueLeader(n, starterProcess, states, getActor))
   } holds
 
-  def noLeaderImpliesknowTrueLeader(n: BigInt, starterProcess: BigInt, states: MMap[ActorId, State], getActor: MMap[ActorId,Actor]): Boolean = {
+  def noLeaderImpliesknowTrueLeader(n: BigInt, starterProcess: BigInt, states: Map[ActorId, State], getActor: Map[ActorId,Actor]): Boolean = {
     require(
       0 <= n &&
       0 <= starterProcess && starterProcess < n &&
@@ -1218,8 +1204,8 @@ object ProtocolProof {
     n: BigInt,
     u: BigInt,
     starterProcess: BigInt,
-    states: MMap[ActorId,State],
-    getActor: MMap[ActorId,Actor],
+    states: Map[ActorId,State],
+    getActor: Map[ActorId,Actor],
     myuid: BigInt,
     ssn: BigInt
   ): Boolean = {
@@ -1252,8 +1238,8 @@ object ProtocolProof {
   def electionParticipants(
     n: BigInt,
     starterProcess: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]) = {
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]) = {
     require(
       0 <= starterProcess && starterProcess < n &&
       intForAll(n, statesDefined(states))
@@ -1281,8 +1267,8 @@ object ProtocolProof {
     n: BigInt,
     u: BigInt,
     starterProcess: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]): Boolean = {
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]): Boolean = {
     require(
       intForAll(n, statesDefined(states)) &&
       intForAll(n, emptyChannel(n, messages)) &&
@@ -1304,8 +1290,8 @@ object ProtocolProof {
     m: BigInt,
     starterProcess: BigInt,
     myuid: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
     tt: List[Message]
   ): Boolean = {
     require(
@@ -1331,8 +1317,8 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     myuid: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
     newChannel: List[Message]): Boolean = {
     require(
       0 <= starterProcess && starterProcess < n &&
@@ -1356,8 +1342,8 @@ object ProtocolProof {
   def noElectionImpliesElectionParticipants(
     n: BigInt, m: BigInt,
     starterProcess: BigInt,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]]
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]]
   ): Boolean = {
 
     require(
@@ -1381,7 +1367,7 @@ object ProtocolProof {
     * Network Invariant for the class VerifiedNetwork
     */
 
-  def networkInvariant(param: Parameter, states: MMap[ActorId, State], messages: MMap[(ActorId, ActorId), List[Message]], getActor: MMap[ActorId, Actor]) = {
+  def networkInvariant(param: Parameter, states: Map[ActorId, State], messages: Map[(ActorId, ActorId), List[Message]], getActor: Map[ActorId, Actor]) = {
     val Params(n, starterProcess, ssns) = param
     validParam(param) &&
     intForAll(n, getActorDefined(getActor)) &&
@@ -1536,9 +1522,9 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     a: Actor,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     ssns: BigInt => BigInt,
     ssn2: BigInt) = {
     require {
@@ -1618,9 +1604,9 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     a: Actor,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     ssns: BigInt => BigInt,
     ssn2: BigInt) = {
     require {
@@ -1700,9 +1686,9 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     a: Actor,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     ssns: BigInt => BigInt,
     ssn2: BigInt) = {
     require {
@@ -1786,9 +1772,9 @@ object ProtocolProof {
     starterProcess: BigInt,
     usender: BigInt,
     a: Actor,
-    states: MMap[ActorId, State],
-    messages: MMap[(ActorId, ActorId), List[Message]],
-    getActor: MMap[ActorId, Actor],
+    states: Map[ActorId, State],
+    messages: Map[(ActorId, ActorId), List[Message]],
+    getActor: Map[ActorId, Actor],
     ssns: BigInt => BigInt,
     ssn2: BigInt) = {
     require {
@@ -1937,7 +1923,7 @@ object ProtocolProof {
     })
   }
 
-  def hasMessage(n: BigInt, messages: MMap[(ActorId,ActorId),List[Message]], p: Message => Boolean) = {
+  def hasMessage(n: BigInt, messages: Map[(ActorId,ActorId),List[Message]], p: Message => Boolean) = {
     require(n >= 0)
 
     (i: BigInt) =>
@@ -1966,13 +1952,13 @@ object ProtocolProof {
     }
   }
 
-  def existsMessage(n: BigInt,  messages: MMap[(ActorId,ActorId),List[Message]], p: Message => Boolean) = {
+  def existsMessage(n: BigInt,  messages: Map[(ActorId,ActorId),List[Message]], p: Message => Boolean) = {
     require(n >= 0)
     intExists(n, hasMessage(n, messages, p))
   }
 
 
-  def nothingExists(n: BigInt, messages: MMap[(ActorId,ActorId),List[Message]], p: Message => Boolean): Boolean = {
+  def nothingExists(n: BigInt, messages: Map[(ActorId,ActorId),List[Message]], p: Message => Boolean): Boolean = {
     require(n >= 0 && intForAll(n, emptyChannel(n, messages)))
 
     if (existsMessage(n, messages, p)) {
@@ -1986,7 +1972,7 @@ object ProtocolProof {
 
   //   @induct
   def updateChannel(
-    n: BigInt, messages: MMap[(ActorId,ActorId), List[Message]],
+    n: BigInt, messages: Map[(ActorId,ActorId), List[Message]],
     tt: List[Message], p: Message => Boolean,
     usender: BigInt, ureceiver: BigInt) = {
 
@@ -2013,16 +1999,16 @@ object ProtocolProof {
       !existsMessage(n, messages.updated((UID(usender),UID(ureceiver)), tt), p)
   } holds
 
-  def runActorsPrecondition(p: Parameter, initial_actor: Actor, schedule: List[(ActorId,ActorId,Message)]): Boolean = {
+  def runActorsPrecondition(p: Parameter, initialActor: Actor, schedule: List[(ActorId,ActorId,Message)]): Boolean = {
 
     validParam(p) && {
       val net = makeNetwork(p)
       val Params(n, _, _) = p
-      val Process(UID(myuid), ssn) = initial_actor
+      val Process(UID(myuid), ssn) = initialActor
 
       0 <= myuid && myuid < n &&
       elimForAll(n, getActorDefined(net.getActor), myuid) &&
-      net.getActor(UID(myuid)) == initial_actor
+      net.getActor(UID(myuid)) == initialActor
     }
 
   }
@@ -2044,8 +2030,8 @@ object ProtocolProof {
       2: BigInt,
       0: BigInt,
       0: BigInt,
-      MMap((x: ActorId) =>
+      Map((x: ActorId) =>
         if (x == UID(0)) Some(Process(UID(0),18))
-        else Some(Process(UID(1),24))): MMap[ActorId,Actor]))
+        else Some(Process(UID(1),24))): Map[ActorId,Actor]))
   }
 }
