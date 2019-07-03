@@ -545,10 +545,10 @@ object ProtocolProof3 {
     
     channels match {
       case Cons(x,xs) if (x == c) => 
-        !allHistoriesContains_aux(s, i, actors, states)
+        !allHistoriesContainsAux(s, i, actors, states)
       case Cons(x,xs) =>
         removeWUProp8(messages, states, xs, actors, c) &&
-        !allHistoriesContains_aux(s, i, actors, states)
+        !allHistoriesContainsAux(s, i, actors, states)
     }
   
   }holds
@@ -617,7 +617,7 @@ object ProtocolProof3 {
     id: ActorId
   ): Boolean = {
     require(
-      !allHistoriesContains_aux(s,i,actors, states) &&
+      !allHistoriesContainsAux(s,i,actors, states) &&
       actors.contains(id)
     )
   
@@ -656,7 +656,7 @@ object ProtocolProof3 {
       {
         m match {
           case WriteSystem(s,i,_,_) => 
-            !allHistoriesContains_aux(s,i,actors, states)
+            !allHistoriesContainsAux(s,i,actors, states)
           case _ => false
         }
       }
@@ -899,7 +899,7 @@ object ProtocolProof3 {
     id: ActorId
   ): Boolean = {
     require(
-      !allHistoriesContains_aux(s, i, actors, states) &&
+      !allHistoriesContainsAux(s, i, actors, states) &&
       actors.contains(id)
     )
     
@@ -933,7 +933,7 @@ object ProtocolProof3 {
     id: ActorId
   ): Boolean = {
     require(
-      !allHistoriesContains_aux(s, i, actors, states) &&
+      !allHistoriesContainsAux(s, i, actors, states) &&
       subsetOf(otherActor, actors) &&
       !otherActor.contains(id)
     )
@@ -945,7 +945,7 @@ object ProtocolProof3 {
         subLemma(s,i,actors,states,x) &&
         newStates.getOrElse(x, BadState()) == states.getOrElse(x, BadState()) &&
         leMaprop8_3(s,i,xs,actors,states,newState,id) &&
-        !allHistoriesContains_aux(s, i, otherActor, newStates)
+        !allHistoriesContainsAux(s, i, otherActor, newStates)
     }
   
   }holds
@@ -982,7 +982,7 @@ object ProtocolProof3 {
 //   ): Boolean = {
 //     require(
 //       uniqueWriteUser(messages, channels) &&
-//       prop4_aux(messages, states, channels) &&
+//       prop4Aux(messages, states, channels) &&
 //       {
 //         messages.getOrElse(c, Nil()) match {
 //           case Cons(x@WriteUser(s,i), xs) => 

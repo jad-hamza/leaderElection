@@ -13,40 +13,34 @@ object FifoNetwork  {
 
   case class VerifiedNetwork(
       param: Parameter,
-      var states: Map[ActorId,State],
-      var messages: Map[(ActorId,ActorId),List[Message]],
-      getActor: Map[ActorId,Actor])  {
+      var states: CMap[ActorId,State],
+      var messages: CMap[(ActorId,ActorId),List[Message]],
+      getActor: CMap[ActorId,Actor])  {
 
     def send(sender: ActorId, receiver: ActorId, m: Message): Unit = {
-      messages = messages.updated((sender,receiver), messages.getOrElse((sender,receiver),Nil()) :+ m)
+      messages = messages.updated((sender,receiver), messages((sender,receiver)) :+ m)
     }
 
     def updateState(actor: ActorId, state: State): Unit = {
       states = states.updated(actor,state)
     }
 
-    def getState(actor: ActorId) = {
-      require(states.contains(actor))
-      states(actor)
-    }
-
+    def getState(actor: ActorId) = states(actor)
 
     def applyMessage(sender: ActorId, receiver: ActorId, m: Message): Boolean = {
       require(
         networkInvariant(param, states, messages, getActor) &&
         validId(this, sender) &&
-        validId(this, receiver) &&
-        peekMessageEnsuresReceivePre(this, sender, receiver, m)
+        validId(this, receiver)
       )
 
-      val sms = messages.getOrElse((sender,receiver), Nil())
+      val channel = messages((sender,receiver))
 
-      sms match {
+      channel match {
         case Cons(x, xs) if (x == m) =>
           val messages2 = messages.updated((sender,receiver), xs)
           messages = messages2
-          check(networkInvariant(param, states, messages, getActor))
-          getActor(receiver).receive(sender,m)(this)
+          getActor(receiver).receive(sender,m)(this, receiver)
           check(networkInvariant(param, states, messages, getActor))
           true
 

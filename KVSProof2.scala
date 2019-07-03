@@ -782,7 +782,7 @@ object ProtocolProof2 {
 // adding a WU(id) in C(i,j) there is not id in h_k (for all k)
 
 
-  def allHistoriesContains_aux(
+  def allHistoriesContainsAux(
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
@@ -794,14 +794,14 @@ object ProtocolProof2 {
         states.getOrElse(x, BadState()) match {
           case CommonState(mem,h) => 
             h.contains((true, s, i)) ||
-            allHistoriesContains_aux(s, i, xs, states)
+            allHistoriesContainsAux(s, i, xs, states)
           case _ =>   
-            allHistoriesContains_aux(s,i,xs, states)
+            allHistoriesContainsAux(s,i,xs, states)
         }
     }
   }
   
-  def notAllHistoriesContainsEmpty_aux(
+  def notAllHistoriesContainsEmptyAux(
     s: Variable,
     i: BigInt, 
     actors: List[ActorId]
@@ -809,22 +809,22 @@ object ProtocolProof2 {
     actors match {
       case Nil() => true
       case Cons(x, xs) => 
-        init_states.getOrElse(x, BadState()) match {
+        initStates.getOrElse(x, BadState()) match {
           case CommonState(mem,h) => 
             h.isEmpty &&
             !h.contains((true, s, i)) &&
-            notAllHistoriesContainsEmpty_aux(s, i, xs) &&
-            !allHistoriesContains_aux(s,i,actors, init_states) &&
+            notAllHistoriesContainsEmptyAux(s, i, xs) &&
+            !allHistoriesContainsAux(s,i,actors, initStates) &&
             true
           case _ => 
-            notAllHistoriesContainsEmpty_aux(s,i,xs) && 
-            !allHistoriesContains_aux(s,i,actors, init_states) &&
+            notAllHistoriesContainsEmptyAux(s,i,xs) && 
+            !allHistoriesContainsAux(s,i,actors, initStates) &&
             true
         }
     }
   }holds
   
-  def updateSystemAllHistoriesContains_aux(
+  def updateSystemAllHistoriesContainsAux(
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
@@ -833,7 +833,7 @@ object ProtocolProof2 {
     x: Variable, v: BigInt
   ): Boolean = {
     require(
-      !allHistoriesContains_aux(s, i, actors, states) &&
+      !allHistoriesContainsAux(s, i, actors, states) &&
       {
         states.getOrElse(id, BadState()) match {
           case CommonState(mem, h) => true
@@ -851,17 +851,17 @@ object ProtocolProof2 {
         !h.contains((true, s, i)) &&
         (s,i) != (x,v) &&
         !(h ++ Set((true,x,v))).contains((true,s,i)) &&
-        updateSystemAllHistoriesContains_aux(s,i,ds, states,  id, x, v) &&
-        !allHistoriesContains_aux(s,i,actors, newStates)
+        updateSystemAllHistoriesContainsAux(s,i,ds, states,  id, x, v) &&
+        !allHistoriesContainsAux(s,i,actors, newStates)
       case Cons(d,ds) => 
         states.getOrElse(d, BadState()) == newStates.getOrElse(d, BadState()) &&
-        updateSystemAllHistoriesContains_aux(s,i,ds, states,  id, x, v) &&
-        !allHistoriesContains_aux(s,i,actors, newStates)
+        updateSystemAllHistoriesContainsAux(s,i,ds, states,  id, x, v) &&
+        !allHistoriesContainsAux(s,i,actors, newStates)
     }
   
   }holds
   
-  def updateUserAllHistoriesContains_aux(
+  def updateUserAllHistoriesContainsAux(
     s: Variable,
     i: BigInt, 
     actors: List[ActorId],
@@ -870,7 +870,7 @@ object ProtocolProof2 {
     state: State
   ): Boolean = {
     require(
-      !allHistoriesContains_aux(s,i,actors, states) &&
+      !allHistoriesContainsAux(s,i,actors, states) &&
       {
         state match {
         case UserState(h,c) => true
@@ -885,14 +885,14 @@ object ProtocolProof2 {
       case Cons(x,xs) if (x == id) => 
         newStates.getOrElse(id, BadState()) match {
           case UserState(h,c) => 
-            updateUserAllHistoriesContains_aux(s,i,xs, states, id, state) &&
-            !allHistoriesContains_aux(s,i,actors, newStates)
+            updateUserAllHistoriesContainsAux(s,i,xs, states, id, state) &&
+            !allHistoriesContainsAux(s,i,actors, newStates)
           case _ => false
         }
       case Cons(x,xs) =>  
         states.getOrElse(x, BadState()) == newStates.getOrElse(x, BadState()) &&
-        updateUserAllHistoriesContains_aux(s,i,xs, states,  id, state) &&
-        !allHistoriesContains_aux(s,i,actors, newStates)
+        updateUserAllHistoriesContainsAux(s,i,xs, states,  id, state) &&
+        !allHistoriesContainsAux(s,i,actors, newStates)
     }
   
   }holds
@@ -924,7 +924,7 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(s,i) => 
-            !allHistoriesContains_aux(s, i, actors, states) &&
+            !allHistoriesContainsAux(s, i, actors, states) &&
             prop4One(xs, states, actors)
           case _ => 
             prop4One(xs, states, actors)
@@ -985,7 +985,7 @@ object ProtocolProof2 {
       isWU(m) && 
       {
         val WriteUser(s,i) = m
-        !allHistoriesContains_aux(s,i,actors, states)
+        !allHistoriesContainsAux(s,i,actors, states)
       }
     )
     
@@ -995,7 +995,7 @@ object ProtocolProof2 {
       case Cons(x,xs) => 
         x match {
           case WriteUser(s,i) => 
-            !allHistoriesContains_aux(s,i,actors, states) &&
+            !allHistoriesContainsAux(s,i,actors, states) &&
             addWUprop4One(xs, m, actors, states) &&
             prop4One(list :+ m, states, actors)
           case _ => 
@@ -1019,7 +1019,7 @@ object ProtocolProof2 {
       isWU(m) && 
       {
         val WriteUser(s,i) = m
-        !allHistoriesContains_aux(s,i,actors, states)
+        !allHistoriesContainsAux(s,i,actors, states)
       }
     )
     val newMessages = add(messages, c, m)
@@ -1058,7 +1058,7 @@ object ProtocolProof2 {
       case Cons(x,xs) => 
         x match {
           case WriteUser(s,i) => 
-            !allHistoriesContains_aux(s,i,actors, states) &&
+            !allHistoriesContainsAux(s,i,actors, states) &&
             addOtherProp4One(xs, m, actors, states) &&
             prop4One(list :+ m, states, actors)
           case _ => 
@@ -1121,7 +1121,7 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(s,i) => 
-            updateUserAllHistoriesContains_aux(s,i,actors, states, id, newState) &&
+            updateUserAllHistoriesContainsAux(s,i,actors, states, id, newState) &&
             updateStateUserProp4One(xs, actors, id, states, newState) &&
             prop4One(list, newStates, actors)
           case _ => 
@@ -1188,7 +1188,7 @@ object ProtocolProof2 {
       case Cons(m,xs) => 
         m match {
           case WriteUser(x,v) if ((x,v) != (s,i))=> 
-            updateSystemAllHistoriesContains_aux(x,v,actors,states,id,s,i) &&
+            updateSystemAllHistoriesContainsAux(x,v,actors,states,id,s,i) &&
             updateStateSystemProp4One(xs,actors,states, id,s,i) &&
             prop4One(list, newStates, actors)
           case WriteUser(x,v) => false 
@@ -1253,7 +1253,7 @@ object ProtocolProof2 {
       case Cons((id,m),xs) => 
         m match {
           case WriteUser(s,i) => 
-            !allHistoriesContains_aux(s,i,actors, states) &&
+            !allHistoriesContainsAux(s,i,actors, states) &&
             inductInitProp4(xs, states, actors)
           case _ =>
             inductInitProp4(xs, states, actors) 
@@ -1298,9 +1298,9 @@ object ProtocolProof2 {
       case Cons((a,b),Cons((e,d), ys)) => 
         d match {
           case WriteUser(s,i) => 
-            !allHistoriesContains_aux(s,i,actors, states) &&
-            updateUserAllHistoriesContains_aux(s,i,actors, states, a4, UserState(Cons(((true, x,v),Set()), h), c)) &&
-            !allHistoriesContains_aux(s,i,actors, newStates) &&
+            !allHistoriesContainsAux(s,i,actors, states) &&
+            updateUserAllHistoriesContainsAux(s,i,actors, states, a4, UserState(Cons(((true, x,v),Set()), h), c)) &&
+            !allHistoriesContainsAux(s,i,actors, newStates) &&
             updateInductInitProp4(Cons((a,b), ys), states, messages, actors) &&
             inductInitProp4(Cons((e,d), ys), newStates, actors)
         }   
@@ -1317,12 +1317,12 @@ object ProtocolProof2 {
       case Cons((id,m),xs) =>
         m match {
           case WriteUser(s,i) => 
-            notAllHistoriesContainsEmpty_aux(s,i,actors) &&
+            notAllHistoriesContainsEmptyAux(s,i,actors) &&
             inductInitProp4Empty(xs, actors) &&
-            inductInitProp4(xs, init_states,actors)
+            inductInitProp4(xs, initStates,actors)
           case _ =>
             inductInitProp4Empty(xs, actors)
-            inductInitProp4(xs, init_states, actors) 
+            inductInitProp4(xs, initStates, actors) 
         }
     }
   

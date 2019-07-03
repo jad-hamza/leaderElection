@@ -1,10 +1,10 @@
 Counting Actor: verifies in 15 sec
 
-    stainless Counting* FifoNetwork.scala Networking.scala
+    stainless Counting* FifoNetwork.scala Networking.scala CMap.scala
 
 Leader Election: verifies in 1 min
 
-    stainless Leader* FifoNetwork.scala Networking.scala BoundedQuantifiers.scala ListUtils.scala
+    stainless Leader* FifoNetwork.scala Networking.scala BoundedQuantifiers.scala ListUtils.scala CMap.scala
 
 Key-value store: verifies in 4 to 5 min
 

@@ -34,9 +34,9 @@ object ProtocolProof {
   def emptyNet(): VerifiedNetwork = {
     VerifiedNetwork(
       Param(List(), List()),
-      init_states,
-      init_messages,
-      init_getActor
+      initStates,
+      initMessages,
+      initGetActor
     )
   }
 
@@ -219,16 +219,16 @@ object ProtocolProof {
 //     }
 //   }
 //
-//   val init_mem = makeInitMem(correct_variables)
+//   val initMem = makeInitMem(correct_variables)
 
-  val init_mem = Map[Variable, BigInt](
+  val initMem = Map[Variable, BigInt](
     Map[Variable, BigInt]()
   )
 
-//   val init_param = Variables(correct_variables)
+//   val initParam = Variables(correct_variables)
 
   /*
-  val init_messages_list = List[((ActorId,ActorId),List[Message])](
+  val initMessages_list = List[((ActorId,ActorId),List[Message])](
     ((a1,a1),(Nil():List[Message])),
     ((a1,a2),(Nil():List[Message])),
     ((a1,a3),(Nil():List[Message])),
@@ -246,37 +246,37 @@ object ProtocolProof {
     ((a4,a3),(Nil():List[Message])),
     ((a4,a4),(Nil():List[Message]))
     )
-  val init_messages1 = Map.makeMap[(ActorId,ActorId),List[Message]](init_messages_list)
-  val init_messages = init_messages1.updated((a4,a4), Nil())
+  val initMessages1 = Map.makeMap[(ActorId,ActorId),List[Message]](initMessages_list)
+  val initMessages = initMessages1.updated((a4,a4), Nil())
   */
 
 
-//   val init_states_list = List[(ActorId, State)](
-//     (a1,CommonState(Map.makeMap[Variable,BigInt](init_mem), Set())),
-//     (a2,CommonState(Map.makeMap[Variable,BigInt](init_mem), Set())),
-//     (a3,CommonState(Map.makeMap[Variable,BigInt](init_mem), Set())),
+//   val initStates_list = List[(ActorId, State)](
+//     (a1,CommonState(Map.makeMap[Variable,BigInt](initMem), Set())),
+//     (a2,CommonState(Map.makeMap[Variable,BigInt](initMem), Set())),
+//     (a3,CommonState(Map.makeMap[Variable,BigInt](initMem), Set())),
 //     (a4,UserState(Nil(),0))
 //     )
-//   val init_states = Map.makeMap[ActorId,State](init_states_list)
+//   val initStates = Map.makeMap[ActorId,State](initStates_list)
 
-  val init_states = Map[ActorId, State](
+  val initStates = Map[ActorId, State](
     Map[ActorId, State](
-      (a1,CommonState(init_mem, Set())),
-      (a2,CommonState(init_mem, Set())),
-      (a3,CommonState(init_mem, Set())),
+      (a1,CommonState(initMem, Set())),
+      (a2,CommonState(initMem, Set())),
+      (a3,CommonState(initMem, Set())),
       (a4,UserState(Nil(),0))
     )
   )
 
-//   val init_getActor_list = List[(ActorId,Actor)](
+//   val initGetActor_list = List[(ActorId,Actor)](
 //     (a1,SystemActor(a1, List(a2,a3))),
 //     (a2,SystemActor(a2, List(a1,a3))),
 //     (a3,SystemActor(a3, List(a1,a2))),
 //     (a4,UserActor(a4))
 //     )
-//   val init_getActor = Map.makeMap[ActorId,Actor](init_getActor_list)
+//   val initGetActor = Map.makeMap[ActorId,Actor](initGetActor_list)
 
-  val init_getActor = Map[ActorId, Actor](
+  val initGetActor = Map[ActorId, Actor](
     Map[ActorId, Actor](
       (a1,SystemActor(a1, List(a2,a3))),
       (a2,SystemActor(a2, List(a1,a3))),
@@ -285,7 +285,7 @@ object ProtocolProof {
     )
   )
 
-  val init_messages = Map[(ActorId, ActorId), List[Message]](
+  val initMessages = Map[(ActorId, ActorId), List[Message]](
     Map[(ActorId, ActorId), List[Message]](
       ((a1,a1),(Nil():List[Message])),
       ((a1,a2),(Nil():List[Message])),
@@ -316,9 +316,9 @@ object ProtocolProof {
   def makeNetwork(p: Parameter) = {
     require(validParam(p))
     VerifiedNetwork(p,
-		init_states,
-		init_messages,
-		init_getActor
+		initStates,
+		initMessages,
+		initGetActor
 		)
   }ensuring(res =>
     res.getActor(a1) == SystemActor(a1, List(a2,a3)) &&
@@ -337,17 +337,17 @@ object ProtocolProof {
     tableHistory(res.param, res.states) &&
     messagesEmpty(channels) &&
     not2WriteUser(channels, res.messages) &&
-    res.messages == init_messages &&
+    res.messages == initMessages &&
     initMessageEmpty() &&
     uniqueWriteUser(res.messages, channels) &&
     prop3(res.messages, channels) &&
-    initProp5(init_messages, channels) &&
+    initProp5(initMessages, channels) &&
     prop5(res.messages, channels) &&
-    initProp7(init_messages, channels) &&
-    initProp4(init_messages, channels, init_states, List(a1,a2,a3)) &&
-    initProp9(init_messages, channels) &&
-    initProp10(init_messages, channels) &&
-    initProp8(init_messages, channels, init_states) &&
+    initProp7(initMessages, channels) &&
+    initProp4(initMessages, channels, initStates, List(a1,a2,a3)) &&
+    initProp9(initMessages, channels) &&
+    initProp10(initMessages, channels) &&
+    initProp8(initMessages, channels, initStates) &&
     networkInvariant(res.param,res.states, res.messages, res.getActor) &&
     true
   )
@@ -527,7 +527,7 @@ object ProtocolProof {
         collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) &&
         collectOtherActorProp9(otherActor, messages, WriteUser(x,v)) &&
         !collectWWsList(messages, channels).contains(WriteUser(x,v)) &&
-        !allHistoriesContains_aux(x, v, otherActor, states) &&
+        !allHistoriesContainsAux(x, v, otherActor, states) &&
         true
       case _ => false
     }
@@ -566,7 +566,7 @@ object ProtocolProof {
           collectOtherActorProp7(otherActor, messages, WriteUser(x,v)) &&
           collectOtherActorProp9(otherActor, messages, WriteUser(x,v)) &&
           !collectWWsList(messages, channels).contains(WriteUser(x,v)) &&
-          !allHistoriesContains_aux(x, v, otherActor, states)
+          !allHistoriesContainsAux(x, v, otherActor, states)
         case _ => false
       }
       }
@@ -646,7 +646,7 @@ object ProtocolProof {
           !collectWSsList(net.messages, channels).contains(WriteUser(s,i)) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(s,i)) &&
           !collectWWsList(net.messages, channels).contains(WriteUser(s,i)) &&
-          !allHistoriesContains_aux(s, i, List(a1,a2,a3), net.states)
+          !allHistoriesContainsAux(s, i, List(a1,a2,a3), net.states)
         case _ => false
       }
       }
@@ -675,7 +675,7 @@ object ProtocolProof {
     leMaprop8_2(net.messages, channels, myId, WriteUser(s,i)) &&
     updateStateSystemProp8(net.messages, net.states, channels, myId, s, i) &&
     leMaprop8_3(s,i,otherActor, List(a1,a2,a3), net.states, CommonState(mem.updated(s,i),h++Set((true,s, i))), myId) &&
-    !allHistoriesContains_aux(s, i, otherActor, newStates) &&
+    !allHistoriesContainsAux(s, i, otherActor, newStates) &&
     networkInvariant(net.param, newStates, net.messages, net.getActor) &&
     true
   }holds
@@ -936,7 +936,7 @@ object ProtocolProof {
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectWSsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectWWsList(net.messages, channels).contains(WriteUser(x,v)) &&
-          !allHistoriesContains_aux(x, v, List(a1,a2,a3), net.states)
+          !allHistoriesContainsAux(x, v, List(a1,a2,a3), net.states)
         case WriteSystem(x,v,idM,h) =>
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
@@ -985,7 +985,7 @@ object ProtocolProof {
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectWSsList(net.messages, channels).contains(WriteUser(x,v)) &&
           !collectWWsList(net.messages, channels).contains(WriteUser(x,v)) &&
-          !allHistoriesContains_aux(x, v, List(a1,a2,a3), net.states)
+          !allHistoriesContainsAux(x, v, List(a1,a2,a3), net.states)
         case WriteSystem(x,v,idM,h) =>
           userHistory.contains((idM,Set())) &&
           !collectWUsList(net.messages, channels).contains(WriteUser(x,v)) &&
@@ -1016,8 +1016,8 @@ object ProtocolProof {
 
   def peekMessageEnsuresReceivePre(n: VerifiedNetwork, sender: ActorId, receiver: ActorId, m: Message) = {
     require(networkInvariant(n.param, n.states, n.messages, n.getActor) && validId(n,sender) && validId(n,receiver))
-    val sms = n.messages.getOrElse((sender,receiver), Nil())
-    sms match {
+    val channel = n.messages.getOrElse((sender,receiver), Nil())
+    channel match {
       case Cons(x, xs) if (x == m) =>
         val messages2 = n.messages.updated((sender,receiver), xs);
           n.states(a4) match {
@@ -1028,7 +1028,7 @@ object ProtocolProof {
               removeWU(n.messages, channels, (sender, receiver)) &&
               removeProp3(n.messages, (sender, receiver), channels)(n) &&
               inUserHistory(sender, receiver, n.messages, channels, h)&&
-              checkWrite(sms, h) &&
+              checkWrite(channel, h) &&
               removeProp5(n.messages, channels, (sender, receiver)) &&
               removeProp6(n.messages, channels, (sender, receiver)) &&
               removeProp7(n.messages, channels, (sender, receiver)) &&
@@ -1075,7 +1075,7 @@ object ProtocolProof {
       differentInitMessageWW(initList, net.messages) &&
       distinctElements[(ActorId,ActorId)](channels) &&
       {
-        (init_states == net.states && inductInitProp4Empty(initList, List(a1,a2,a3))) ||
+        (initStates == net.states && inductInitProp4Empty(initList, List(a1,a2,a3))) ||
         inductInitProp4(initList, net.states, List(a1,a2,a3))
       } &&
       true
@@ -1138,7 +1138,7 @@ object ProtocolProof {
     differentInitMessageWW(initList, net.messages) &&
     distinctElements[(ActorId,ActorId)](channels) &&
     {
-    (init_states == net.states && inductInitProp4Empty(initList, List(a1,a2,a3))) ||
+    (initStates == net.states && inductInitProp4Empty(initList, List(a1,a2,a3))) ||
     inductInitProp4(initList, net.states, List(a1,a2,a3))
     } &&
     true
@@ -1153,8 +1153,8 @@ object ProtocolProof {
     myId == a4 &&
     distinctElementsInit(initList) &&
     networkInvariant(net.param, net.states, net.messages, net.getActor) &&
-    net.messages == init_messages &&
-    net.states == init_states &&
+    net.messages == initMessages &&
+    net.states == initStates &&
     initMessageEmpty() &&
     differentInitMessageEmpty(initList, net.messages) &&
     differentInitMessageWSEmpty(initList, net.messages) &&
@@ -1168,15 +1168,15 @@ object ProtocolProof {
   }
 
   def initMessageEmpty(): Boolean = {
-    collectWUsList(init_messages, channels).isEmpty &&
-    collectWSsList(init_messages, channels).isEmpty &&
-    collectWWsList(init_messages, channels).isEmpty
+    collectWUsList(initMessages, channels).isEmpty &&
+    collectWSsList(initMessages, channels).isEmpty &&
+    collectWWsList(initMessages, channels).isEmpty
   }holds
 
   def differentInitMessageEmpty(
     initList: List[(ActorId, Message)],
     messages: Map[(ActorId,ActorId),List[Message]]): Boolean = {
-    require(distinctElementsInit(initList) && initMessageEmpty() && messages == init_messages)
+    require(distinctElementsInit(initList) && initMessageEmpty() && messages == initMessages)
     initList match {
       case Nil() => differentInitMessage(initList, messages)
       case Cons(x,xs) =>
@@ -1190,7 +1190,7 @@ object ProtocolProof {
   def differentInitMessageWSEmpty(
     initList: List[(ActorId, Message)],
     messages: Map[(ActorId,ActorId),List[Message]]): Boolean = {
-    require(distinctElementsInit(initList) && initMessageEmpty() && messages == init_messages)
+    require(distinctElementsInit(initList) && initMessageEmpty() && messages == initMessages)
     initList match {
       case Nil() => differentInitMessageWS(initList, messages)
       case Cons(x,xs) =>
@@ -1204,7 +1204,7 @@ object ProtocolProof {
   def differentInitMessageWWEmpty(
     initList: List[(ActorId, Message)],
     messages: Map[(ActorId,ActorId),List[Message]]): Boolean = {
-    require(distinctElementsInit(initList) && initMessageEmpty() && messages == init_messages)
+    require(distinctElementsInit(initList) && initMessageEmpty() && messages == initMessages)
     initList match {
       case Nil() => differentInitMessageWW(initList, messages)
       case Cons(x,xs) =>
@@ -1245,12 +1245,12 @@ object ProtocolProof {
     })
     val UserState(x,v) = states(a4)
     checkWriteForAllEmpty(channels, x) &&
-    checkWriteForAll(channels, init_messages, x)
+    checkWriteForAll(channels, initMessages, x)
   }holds
 
 
   def checkEmpty(x:(ActorId, ActorId)): Boolean = {
-    init_messages.getOrElse(x,Nil()).isEmpty
+    initMessages.getOrElse(x,Nil()).isEmpty
   }holds
 
   def checkWriteForAllEmpty(
@@ -1258,12 +1258,12 @@ object ProtocolProof {
     userHistory: List[((Boolean, Variable, BigInt),Set[(Boolean, Variable, BigInt)])]
     ): Boolean = {
     list match {
-      case Nil() => checkWriteForAll(Nil(), init_messages, userHistory)
+      case Nil() => checkWriteForAll(Nil(), initMessages, userHistory)
       case Cons(x,xs) =>
         checkEmpty(x) &&
-        checkWrite(init_messages.getOrElse(x,Nil()), userHistory) &&
+        checkWrite(initMessages.getOrElse(x,Nil()), userHistory) &&
         checkWriteForAllEmpty(xs, userHistory) &&
-        checkWriteForAll(xs, init_messages, userHistory)
+        checkWriteForAll(xs, initMessages, userHistory)
     }
   }holds
 
@@ -1585,7 +1585,7 @@ object ProtocolProof {
   }holds
 
   def initTableHistory(param: Parameter, states: Map[ActorId, State]): Boolean = {
-    require(states == init_states &&
+    require(states == initStates &&
     states.contains(a1) &&
     states.contains(a2) &&
     states.contains(a3) &&
@@ -1602,7 +1602,7 @@ object ProtocolProof {
   }holds
 
   def initTableHistoryOne(variables: List[Variable], state: State, userHistory: List[((Boolean, Variable, BigInt),Set[(Boolean, Variable, BigInt)])]): Boolean = {
-    require(state == CommonState(init_mem, Set()))
+    require(state == CommonState(initMem, Set()))
     state match {
       case CommonState(mem, h) =>
         variables match {
@@ -1652,12 +1652,12 @@ object ProtocolProof {
     channels match {
       case Nil() => true
       case Cons(x,xs) =>
-        init_messages.getOrElse(x, Nil()).isEmpty &&
-        not2WriteUserOne(x._1, x._2, init_messages.getOrElse(x, Nil())) &&
+        initMessages.getOrElse(x, Nil()).isEmpty &&
+        not2WriteUserOne(x._1, x._2, initMessages.getOrElse(x, Nil())) &&
         messagesEmpty(xs) &&
-        (collectWUs(init_messages.getOrElse(x,Nil())) & collectWUsList(init_messages,xs)).isEmpty &&
-        uniqueWriteUser(init_messages, channels) &&
-        not2WriteUser(channels, init_messages)
+        (collectWUs(initMessages.getOrElse(x,Nil())) & collectWUsList(initMessages,xs)).isEmpty &&
+        uniqueWriteUser(initMessages, channels) &&
+        not2WriteUser(channels, initMessages)
     }
   }holds
 
@@ -2741,7 +2741,7 @@ object ProtocolProof {
     channels match {
       case Nil() => prop5(messages, channels)
       case Cons(x,xs) =>
-        init_messages.getOrElse(x, Nil()).isEmpty &&
+        initMessages.getOrElse(x, Nil()).isEmpty &&
         initProp5One(messages.getOrElse(x, Nil())) &&
         prop5One(messages.getOrElse(x, Nil())) &&
         initProp5(messages, xs) &&

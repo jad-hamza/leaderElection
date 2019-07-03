@@ -18,30 +18,28 @@ object Networking {
 
 
   abstract class Actor {
-    val myId: ActorId
-
-    final def !!(receiver: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-      net send (myId,receiver,m)
+    final def !!(receiver: ActorId, m: Message)(implicit net: VerifiedNetwork, current: ActorId) = {
+      net send (current, receiver, m)
     }
 
-    @pure
-    def receivePre(sender: ActorId, m: Message)(implicit net: VerifiedNetwork): Boolean = (??? : Boolean)
+    def validId(id: ActorId): Boolean = true
 
-    def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork): Unit = {
-      require(networkInvariant(net.param, net.states, net.messages, net.getActor) && receivePre(sender, m))
+    def receive(sender: ActorId, m: Message)(implicit net: VerifiedNetwork, current: ActorId): Unit = {
+      require(networkInvariant(net.param, net.states, addMessage(net.messages, sender, current, m), net.getActor) && validId(current))
       (??? : Unit)
-    }
+    } ensuring(_ => networkInvariant(net.param, net.states, net.messages, net.getActor))
 
-    final def state(implicit net: VerifiedNetwork) = {
-      require(net.states.contains(myId))
-      net.getState(myId)
-    }
+    final def state(implicit net: VerifiedNetwork, current: ActorId) = net.getState(current)
 
-    final def update(s: State)(implicit net: VerifiedNetwork) = {
-      net.updateState(myId, s)
+    final def update(s: State)(implicit net: VerifiedNetwork, current: ActorId) = {
+      net.updateState(current, s)
     }
 
 
+  }
+
+  def addMessage(messages: CMap[(ActorId, ActorId), List[Message]], sender: ActorId, current: ActorId, m: Message) = {
+    messages.updated((sender, current), Cons(m, messages((sender,current))))
   }
 
 
@@ -57,7 +55,7 @@ object Networking {
         case Nil() => ()
         case Cons((sender, receiver, m), schedule2) =>
 
-          if (validId(net, sender) && validId(net, receiver) && peekMessageEnsuresReceivePre(net, sender, receiver, m) && net.applyMessage(sender, receiver, m))
+          if (validId(net, sender) && validId(net, receiver) && net.applyMessage(sender, receiver, m))
             loop(schedule2)
 //           else
 //             error[Unit]("schedule not valid")

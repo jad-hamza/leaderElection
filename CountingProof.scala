@@ -12,7 +12,7 @@ import stainless.annotation._
 import scala.language.postfixOps
 
 
-// This object contains lemma and auxiliary functions used in the proofs
+// This object contains lemmas and auxiliary functions used in the proofs
 
 object ProtocolProof {
   import Protocol._
@@ -21,26 +21,21 @@ object ProtocolProof {
     true
   }
 
-  def listToMap[A,B](l: List[(A,B)]): Map[A,B] = l match {
-    case Nil() => Map()
-    case Cons((a,b), ls) => listToMap(ls).updated(a,b)
-  }
-
   def makeNetwork(p: Parameter) = {
     val net = VerifiedNetwork(
       NoParam(),
-      listToMap(List[(ActorId,State)](
-        (ActorId1(), CCounter(0)),
-        (ActorId2(), VCounter(0))
-      )),
-      listToMap(List()),
-      listToMap(List[(ActorId,Actor)](
-        (ActorId1(), CountingActor(actor1)),
-        (ActorId2(), CheckingActor(actor2))
-      ))
+      CMap(List[(ActorId,State)](
+        (ActorId1, CCounter(0)),
+        (ActorId2, VCounter(0))
+      ), DummyState),
+      CMap(List[Message]()),
+      CMap(List[(ActorId,Actor)](
+        (ActorId1, CountingActor()),
+        (ActorId2, CheckingActor())
+      ), DummyActor())
     )
 
-    CountingActor(actor1).init()(net)
+    CountingActor().init()(net, ActorId1)
 
     net
   } ensuring(res => networkInvariant(res.param, res.states, res.messages, res.getActor))
@@ -48,115 +43,26 @@ object ProtocolProof {
   def runActorsPrecondition(p: Parameter, schedule: List[(ActorId,ActorId,Message)]): Boolean = true
 
   // This is an invariant of the class VerifiedNetwork
-  def networkInvariant(param: Parameter, states: Map[ActorId, State], messages: Map[(ActorId,ActorId),List[Message]], getActor: Map[ActorId,Actor]) = {
-    states.contains(actor1) &&
-    states.contains(actor2) &&
-    states(actor1) != BadState() &&
-    states(actor2) != BadState() &&
-    getActor.contains(actor1) &&
-    getActor.contains(actor2) &&
-    getActor(actor1) == CountingActor(actor1) &&
-    getActor(actor2) == CheckingActor(actor2) &&
-    !messages.contains((actor2,actor2)) &&
-    !messages.contains((actor2,actor1)) &&
-    areIncrements(messages.getOrElse((actor1,actor1), Nil())) &&
-    ((states(actor1),states(actor2)) match {
+  def networkInvariant(param: Parameter, states: CMap[ActorId, State], messages: CMap[(ActorId,ActorId),List[Message]], getActor: CMap[ActorId,Actor]) = {
+    states(ActorId1).isInstanceOf[CCounter] &&
+    states(ActorId2).isInstanceOf[VCounter] &&
+    getActor(ActorId1) == CountingActor() &&
+    getActor(ActorId2) == CheckingActor() &&
+    areIncrements(messages((ActorId1,ActorId1))) &&
+    ((states(ActorId1),states(ActorId2)) match {
       case (CCounter(i),VCounter(k)) =>
-        val sms = messages.getOrElse((actor1,actor2), Nil())
+        val channel = messages((ActorId1,ActorId2))
 
-        areDelivers(sms) &&
-        isSorted(sms) &&
+        areDelivers(channel) &&
+        isSorted(channel) &&
         i >= k && (
-          sms.isEmpty || (
-            i >= max(sms) &&
-            k < min(sms)
+          channel.isEmpty || (
+            i >= max(channel) &&
+            k < min(channel)
           )
         )
       case _ => false
-      })
-  }
-
-
-
-  def countingActorReceivePre(receiver: Actor, sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-    require(networkInvariant(net.param, net.states, net.messages, net.getActor) && receiver.myId == actor1)
-    (sender, m, receiver.state) match {
-      case (ActorId1(), Increment(), CCounter(i)) =>
-
-        val j = i+1
-        val a1a2messages = net.messages.getOrElse((actor1,actor2),Nil())
-        val a1a1messages = net.messages.getOrElse((actor1,actor1),Nil())
-        val newStates = net.states.updated(actor1, CCounter(j))
-        val newa1a2messages = a1a2messages :+ Deliver(j)
-        val newa1a1messages = a1a1messages :+ Increment()
-        val newMapMessages = net.messages.updated((actor1,actor2), newa1a2messages)
-        val newnewMapMessages = newMapMessages.updated((actor1,actor1), newa1a1messages)
-        val VCounter(k) = net getState(actor2)
-
-        areDelivers(a1a2messages) &&
-        appendDeliver(a1a2messages, j) &&
-        areIncrements(a1a1messages) &&
-        appendIncrement(a1a1messages) &&
-        areIncrements(newa1a1messages) &&
-        areDelivers(newa1a2messages) &&
-        appendDeliver(a1a2messages, j) &&
-        appendItself(a1a2messages, j) &&
-        j >= max(newa1a2messages) &&
-        k < j &&
-        appendLarger(a1a2messages, j, k) &&
-        k < min(newa1a2messages) &&
-        isSorted(a1a2messages) &&
-        appendSorted(a1a2messages, j) &&
-        isSorted(newa1a2messages) &&
-        networkInvariant(net.param, newStates, newMapMessages, net.getActor) &&
-        networkInvariant(net.param, newStates, newnewMapMessages, net.getActor)
-
-      case _ => false
-    }
-
-  }
-
-  def checkingActorReceivePre(receiver: Actor, sender: ActorId, m: Message)(implicit net: VerifiedNetwork) = {
-    require(networkInvariant(net.param, net.states, net.messages, net.getActor))
-    sender == ActorId1() &&
-    ((net getState(actor1), m, net getState(actor2)) match {
-      case (CCounter(i), Deliver(j),VCounter(k)) =>
-        val a1a2messages = net.messages.getOrElse((actor1,actor2),Nil())
-        i >= j && j > k &&
-          ( a1a2messages.isEmpty || j < min(a1a2messages) )
-      case _ => false
     })
-  }
-
-  def peekMessageEnsuresReceivePre(n: VerifiedNetwork, sender: ActorId, receiver: ActorId, m: Message) = {
-    require(networkInvariant(n.param, n.states, n.messages, n.getActor))
-
-    val sms = n.messages.getOrElse((sender, receiver), Nil())
-
-
-    sms match {
-      case Cons(x, xs) if (x == m) =>
-        val messages2 = n.messages.updated((sender, receiver), xs)
-
-        (sender, receiver) match {
-          case (ActorId1(), ActorId2()) =>
-
-              ((n.getState(actor1), m, n.getState(actor2)) match {
-                case (CCounter(i), Deliver(j),VCounter(k)) =>
-                  val mm = messages2.getOrElse((actor1,actor2),Nil())
-
-                  smallestHead(j,sms) && (mm.isEmpty || j < min(mm))
-              })
-
-          case (ActorId1(), ActorId1()) =>
-            true
-
-          case _ =>
-              false
-        }
-      case _ =>
-        true
-    }
   }
 
   def min(l: List[Message]): BigInt = {
@@ -210,7 +116,7 @@ object ProtocolProof {
   def areIncrements(l: List[Message]): Boolean = {
     l match {
       case Nil() => true
-      case Cons(Increment(), xs) => areIncrements(xs)
+      case Cons(Increment, xs) => areIncrements(xs)
       case _ => false
     }
   }
@@ -219,12 +125,12 @@ object ProtocolProof {
   def appendIncrement(messages: List[Message]) = {
     require(areIncrements(messages))
 
-    areIncrements(messages :+ Increment())
+    areIncrements(messages :+ Increment)
   } holds
 
 
   @induct
-  def appendItself(l: List[Message], j: BigInt) = {
+  def appendMax(l: List[Message], j: BigInt) = {
     require(areDelivers(l) && (l.isEmpty || j >= max(l)))
 
     appendDeliver(l,j) &&
@@ -249,7 +155,7 @@ object ProtocolProof {
 
 
   @induct
-  def smallestHead(j: BigInt, l: List[Message]) = {
+  def headIsSmallest(l: List[Message]) = {
     require(areDelivers(l) && !l.isEmpty && isSorted(l))
 
     l match {
